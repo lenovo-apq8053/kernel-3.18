@@ -2137,15 +2137,13 @@ struct diag_dci_client_tbl *dci_lookup_client_entry_pid(int tgid)
 		entry = list_entry(start, struct diag_dci_client_tbl, track);
 		pid_struct = find_get_pid(entry->tgid);
 		if (!pid_struct) {
-			DIAG_LOG(DIAG_DEBUG_DCI,
-				"diag: valid pid doesn't exist for pid = %d\n",
+			pr_err("diag: valid pid doesn't exist for pid = %d\n",
 				entry->tgid);
 			continue;
 		}
 		task_s = get_pid_task(pid_struct, PIDTYPE_PID);
 		if (!task_s) {
-			DIAG_LOG(DIAG_DEBUG_DCI,
-				"diag: valid task doesn't exist for pid = %d\n",
+			pr_err("diag: valid task doesn't exist for pid = %d\n",
 				entry->tgid);
 			continue;
 		}
