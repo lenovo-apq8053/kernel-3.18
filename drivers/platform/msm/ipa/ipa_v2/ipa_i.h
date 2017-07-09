@@ -175,6 +175,98 @@
 #define MAX_RESOURCE_TO_CLIENTS (IPA_CLIENT_MAX)
 #define IPA_MEM_PART(x_) (ipa_ctx->ctrl->mem_partition.x_)
 
+#define IPA_SMMU_AP_VA_START 0x1000
+#define IPA_SMMU_AP_VA_SIZE 0x40000000
+#define IPA_SMMU_AP_VA_END (IPA_SMMU_AP_VA_START +  IPA_SMMU_AP_VA_SIZE)
+#define IPA_SMMU_UC_VA_START 0x40000000
+#define IPA_SMMU_UC_VA_SIZE 0x20000000
+#define IPA_SMMU_UC_VA_END (IPA_SMMU_UC_VA_START +  IPA_SMMU_UC_VA_SIZE)
+
+#define __FILENAME__ \
+	(strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : __FILE__)
+
+
+#define IPA2_ACTIVE_CLIENTS_PREP_EP(log_info, client) \
+		log_info.file = __FILENAME__; \
+		log_info.line = __LINE__; \
+		log_info.type = EP; \
+		log_info.id_string = (client < 0 || client >= IPA_CLIENT_MAX) \
+			? "Invalid Client" : ipa2_clients_strings[client]
+
+#define IPA2_ACTIVE_CLIENTS_PREP_SIMPLE(log_info) \
+		log_info.file = __FILENAME__; \
+		log_info.line = __LINE__; \
+		log_info.type = SIMPLE; \
+		log_info.id_string = __func__
+
+#define IPA2_ACTIVE_CLIENTS_PREP_RESOURCE(log_info, resource_name) \
+		log_info.file = __FILENAME__; \
+		log_info.line = __LINE__; \
+		log_info.type = RESOURCE; \
+		log_info.id_string = resource_name
+
+#define IPA2_ACTIVE_CLIENTS_PREP_SPECIAL(log_info, id_str) \
+		log_info.file = __FILENAME__; \
+		log_info.line = __LINE__; \
+		log_info.type = SPECIAL; \
+		log_info.id_string = id_str
+
+#define IPA2_ACTIVE_CLIENTS_INC_EP(client) \
+	do { \
+		struct ipa2_active_client_logging_info log_info; \
+		IPA2_ACTIVE_CLIENTS_PREP_EP(log_info, client); \
+		ipa2_inc_client_enable_clks(&log_info); \
+	} while (0)
+
+#define IPA2_ACTIVE_CLIENTS_DEC_EP(client) \
+	do { \
+		struct ipa2_active_client_logging_info log_info; \
+		IPA2_ACTIVE_CLIENTS_PREP_EP(log_info, client); \
+		ipa2_dec_client_disable_clks(&log_info); \
+	} while (0)
+
+#define IPA2_ACTIVE_CLIENTS_INC_SIMPLE() \
+	do { \
+		struct ipa2_active_client_logging_info log_info; \
+		IPA2_ACTIVE_CLIENTS_PREP_SIMPLE(log_info); \
+		ipa2_inc_client_enable_clks(&log_info); \
+	} while (0)
+
+#define IPA2_ACTIVE_CLIENTS_DEC_SIMPLE() \
+	do { \
+		struct ipa2_active_client_logging_info log_info; \
+		IPA2_ACTIVE_CLIENTS_PREP_SIMPLE(log_info); \
+		ipa2_dec_client_disable_clks(&log_info); \
+	} while (0)
+
+#define IPA2_ACTIVE_CLIENTS_INC_RESOURCE(resource_name) \
+	do { \
+		struct ipa2_active_client_logging_info log_info; \
+		IPA2_ACTIVE_CLIENTS_PREP_RESOURCE(log_info, resource_name); \
+		ipa2_inc_client_enable_clks(&log_info); \
+	} while (0)
+
+#define IPA2_ACTIVE_CLIENTS_DEC_RESOURCE(resource_name) \
+	do { \
+		struct ipa2_active_client_logging_info log_info; \
+		IPA2_ACTIVE_CLIENTS_PREP_RESOURCE(log_info, resource_name); \
+		ipa2_dec_client_disable_clks(&log_info); \
+	} while (0)
+
+#define IPA2_ACTIVE_CLIENTS_INC_SPECIAL(id_str) \
+	do { \
+		struct ipa2_active_client_logging_info log_info; \
+		IPA2_ACTIVE_CLIENTS_PREP_SPECIAL(log_info, id_str); \
+		ipa2_inc_client_enable_clks(&log_info); \
+	} while (0)
+
+#define IPA2_ACTIVE_CLIENTS_DEC_SPECIAL(id_str) \
+	do { \
+		struct ipa2_active_client_logging_info log_info; \
+		IPA2_ACTIVE_CLIENTS_PREP_SPECIAL(log_info, id_str); \
+		ipa2_dec_client_disable_clks(&log_info); \
+	} while (0)
+
 #define IPA2_ACTIVE_CLIENTS_LOG_BUFFER_SIZE_LINES 120
 #define IPA2_ACTIVE_CLIENTS_LOG_LINE_LEN 96
 #define IPA2_ACTIVE_CLIENTS_LOG_HASHTABLE_SIZE 50

@@ -197,6 +197,70 @@
 
 #define IPA_GSI_CHANNEL_STOP_MAX_RETRY 10
 #define IPA_GSI_CHANNEL_STOP_PKT_SIZE 1
+#define IPA_GSI_CHANNEL_STOP_SLEEP_MIN_USEC (1000)
+#define IPA_GSI_CHANNEL_STOP_SLEEP_MAX_USEC (2000)
+
+#define IPA_SLEEP_CLK_RATE_KHZ (32)
+
+#define IPA_ACTIVE_CLIENTS_PREP_EP(log_info, client) \
+		log_info.file = __FILENAME__; \
+		log_info.line = __LINE__; \
+		log_info.type = EP; \
+		log_info.id_string = (client < 0 || client >= IPA_CLIENT_MAX) \
+			? "Invalid Client" : ipa3_clients_strings[client]
+
+#define IPA_ACTIVE_CLIENTS_PREP_SIMPLE(log_info) \
+		log_info.file = __FILENAME__; \
+		log_info.line = __LINE__; \
+		log_info.type = SIMPLE; \
+		log_info.id_string = __func__
+
+#define IPA_ACTIVE_CLIENTS_PREP_RESOURCE(log_info, resource_name) \
+		log_info.file = __FILENAME__; \
+		log_info.line = __LINE__; \
+		log_info.type = RESOURCE; \
+		log_info.id_string = resource_name
+
+#define IPA_ACTIVE_CLIENTS_PREP_SPECIAL(log_info, id_str) \
+		log_info.file = __FILENAME__; \
+		log_info.line = __LINE__; \
+		log_info.type = SPECIAL; \
+		log_info.id_string = id_str
+
+#define IPA_ACTIVE_CLIENTS_INC_EP(client) \
+	do { \
+		struct ipa3_active_client_logging_info log_info; \
+		IPA_ACTIVE_CLIENTS_PREP_EP(log_info, client); \
+		ipa3_inc_client_enable_clks(&log_info); \
+	} while (0)
+
+#define IPA_ACTIVE_CLIENTS_DEC_EP(client) \
+	do { \
+		struct ipa3_active_client_logging_info log_info; \
+		IPA_ACTIVE_CLIENTS_PREP_EP(log_info, client); \
+		ipa3_dec_client_disable_clks(&log_info); \
+	} while (0)
+
+#define IPA_ACTIVE_CLIENTS_INC_SIMPLE() \
+	do { \
+		struct ipa3_active_client_logging_info log_info; \
+		IPA_ACTIVE_CLIENTS_PREP_SIMPLE(log_info); \
+		ipa3_inc_client_enable_clks(&log_info); \
+	} while (0)
+
+#define IPA_ACTIVE_CLIENTS_DEC_SIMPLE() \
+	do { \
+		struct ipa3_active_client_logging_info log_info; \
+		IPA_ACTIVE_CLIENTS_PREP_SIMPLE(log_info); \
+		ipa3_dec_client_disable_clks(&log_info); \
+	} while (0)
+
+#define IPA_ACTIVE_CLIENTS_INC_RESOURCE(resource_name) \
+	do { \
+		struct ipa3_active_client_logging_info log_info; \
+		IPA_ACTIVE_CLIENTS_PREP_RESOURCE(log_info, resource_name); \
+		ipa3_inc_client_enable_clks(&log_info); \
+	} while (0)
 
 #define IPA_GSI_CHANNEL_EMPTY_MAX_RETRY 15
 #define IPA_GSI_CHANNEL_EMPTY_SLEEP_MIN_USEC (1000)
