@@ -127,6 +127,7 @@ static struct cnss_sdio_data {
 /* SDIO manufacturer ID and Codes */
 #define MANUFACTURER_ID_AR6320_BASE        0x500
 #define MANUFACTURER_ID_QCA9377_BASE       0x700
+#define MANUFACTURER_ID_QCA9379_BASE       0x800
 #define MANUFACTURER_CODE                  0x271
 
 static const struct sdio_device_id ar6k_id_table[] = {
@@ -162,6 +163,22 @@ static const struct sdio_device_id ar6k_id_table[] = {
 	{SDIO_DEVICE(MANUFACTURER_CODE, (MANUFACTURER_ID_QCA9377_BASE | 0xD))},
 	{SDIO_DEVICE(MANUFACTURER_CODE, (MANUFACTURER_ID_QCA9377_BASE | 0xE))},
 	{SDIO_DEVICE(MANUFACTURER_CODE, (MANUFACTURER_ID_QCA9377_BASE | 0xF))},
+	{SDIO_DEVICE(MANUFACTURER_CODE, (MANUFACTURER_ID_QCA9379_BASE | 0x0))},
+	{SDIO_DEVICE(MANUFACTURER_CODE, (MANUFACTURER_ID_QCA9379_BASE | 0x1))},
+	{SDIO_DEVICE(MANUFACTURER_CODE, (MANUFACTURER_ID_QCA9379_BASE | 0x2))},
+	{SDIO_DEVICE(MANUFACTURER_CODE, (MANUFACTURER_ID_QCA9379_BASE | 0x3))},
+	{SDIO_DEVICE(MANUFACTURER_CODE, (MANUFACTURER_ID_QCA9379_BASE | 0x4))},
+	{SDIO_DEVICE(MANUFACTURER_CODE, (MANUFACTURER_ID_QCA9379_BASE | 0x5))},
+	{SDIO_DEVICE(MANUFACTURER_CODE, (MANUFACTURER_ID_QCA9379_BASE | 0x6))},
+	{SDIO_DEVICE(MANUFACTURER_CODE, (MANUFACTURER_ID_QCA9379_BASE | 0x7))},
+	{SDIO_DEVICE(MANUFACTURER_CODE, (MANUFACTURER_ID_QCA9379_BASE | 0x8))},
+	{SDIO_DEVICE(MANUFACTURER_CODE, (MANUFACTURER_ID_QCA9379_BASE | 0x9))},
+	{SDIO_DEVICE(MANUFACTURER_CODE, (MANUFACTURER_ID_QCA9379_BASE | 0xA))},
+	{SDIO_DEVICE(MANUFACTURER_CODE, (MANUFACTURER_ID_QCA9379_BASE | 0xB))},
+	{SDIO_DEVICE(MANUFACTURER_CODE, (MANUFACTURER_ID_QCA9379_BASE | 0xC))},
+	{SDIO_DEVICE(MANUFACTURER_CODE, (MANUFACTURER_ID_QCA9379_BASE | 0xD))},
+	{SDIO_DEVICE(MANUFACTURER_CODE, (MANUFACTURER_ID_QCA9379_BASE | 0xE))},
+	{SDIO_DEVICE(MANUFACTURER_CODE, (MANUFACTURER_ID_QCA9379_BASE | 0xF))},
 	{},
 };
 MODULE_DEVICE_TABLE(sdio, ar6k_id_table);
@@ -1012,12 +1029,14 @@ int cnss_sdio_wlan_register_driver(struct cnss_sdio_wlan_driver *driver)
 					      cnss_info->id) : error;
 	if (error) {
 		pr_err("wlan probe failed error=%d\n", error);
+#ifdef CONFIG_WCNSS_MEM_PRE_ALLOC
 		/**
 		 * Check memory leak in skb pre-alloc memory pool
 		 * Reset the skb memory pool
 		 */
 		wcnss_skb_prealloc_check_memory_leak();
 		wcnss_skb_pre_alloc_reset();
+#endif
 		goto pinctrl_sleep;
 	}
 
@@ -1065,13 +1084,14 @@ cnss_sdio_wlan_unregister_driver(struct cnss_sdio_wlan_driver *driver)
 		return;
 
 	driver->remove(cnss_info->func);
+#ifdef CONFIG_WCNSS_MEM_PRE_ALLOC
 	/**
 	 * Check memory leak in skb pre-alloc memory pool
 	 * Reset the skb memory pool
 	 */
 	wcnss_skb_prealloc_check_memory_leak();
 	wcnss_skb_pre_alloc_reset();
-
+#endif
 	cnss_info->wdrv = NULL;
 	cnss_set_pinctrl_state(cnss_pdata, PINCTRL_SLEEP);
 	cnss_put_hw_resources(cnss_info->dev);
