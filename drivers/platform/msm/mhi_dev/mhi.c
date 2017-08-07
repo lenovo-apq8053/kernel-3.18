@@ -34,13 +34,10 @@
 #include "mhi_sm.h"
 
 /* Wait time on the device for Host to set M0 state */
-#define MHI_M0_WAIT_MIN_USLEEP		20000000
-#define MHI_M0_WAIT_MAX_USLEEP		25000000
 #define MHI_DEV_M0_MAX_CNT		30
 /* Wait time before suspend/resume is complete */
-#define MHI_SUSPEND_WAIT_MIN		3100
-#define MHI_SUSPEND_WAIT_MAX		3200
-#define MHI_SUSPEND_WAIT_TIMEOUT	500
+#define MHI_SUSPEND_MIN			10000
+#define MHI_SUSPEND_TIMEOUT		3000
 #define MHI_MASK_CH_EV_LEN		32
 #define MHI_RING_CMD_ID			0
 #define MHI_RING_PRIMARY_EVT_ID		1
@@ -512,12 +509,11 @@ int mhi_dev_send_event(struct mhi_dev *mhi, int evnt_ring,
 	struct mhi_addr transfer_addr;
 	uint32_t data_buffer = 0;
 
-	rc = ep_pcie_get_msi_config(mhi->phandle,
-			&cfg);
-		if (rc) {
-			pr_err("Error retrieving pcie msi logic\n");
-			return rc;
-		}
+	rc = ep_pcie_get_msi_config(mhi->phandle, &cfg);
+	if (rc) {
+		pr_err("Error retrieving pcie msi logic\n");
+		return rc;
+	}
 
 	if (evnt_ring_idx > mhi->cfg.event_rings) {
 		pr_err("Invalid event ring idx: %lld\n", evnt_ring_idx);
@@ -1055,7 +1051,8 @@ static void mhi_dev_check_channel_interrupt(struct mhi_dev *mhi)
 
 	for (i = 0; i < MHI_MASK_ROWS_CH_EV_DB; i++) {
 		ch_num = i * MHI_MASK_CH_EV_LEN;
-		chintr_value = mhi->chdb[i].status;
+		/* Process channel status whose mask is enabled */
+		chintr_value = (mhi->chdb[i].status & mhi->chdb[i].mask);
 		if (chintr_value) {
 			mhi_log(MHI_MSG_VERBOSE,
 				"processing id: %d, ch interrupt 0x%x\n",
@@ -1727,9 +1724,9 @@ int mhi_dev_write_channel(struct mhi_dev_client *handle_client,
 
 	atomic_inc(&mhi_ctx->write_active);
 	while (atomic_read(&mhi_ctx->is_suspended) &&
-			suspend_wait_timeout < MHI_SUSPEND_WAIT_TIMEOUT) {
+			suspend_wait_timeout < MHI_SUSPEND_TIMEOUT) {
 		/* wait for the suspend to finish */
-		usleep_range(MHI_SUSPEND_WAIT_MIN, MHI_SUSPEND_WAIT_MAX);
+		msleep(MHI_SUSPEND_MIN);
 		suspend_wait_timeout++;
 	}
 
@@ -1826,7 +1823,7 @@ static void mhi_dev_enable(struct work_struct *work)
 				struct mhi_dev, ring_init_cb_work);
 
 	enum mhi_dev_state state;
-	uint32_t max_cnt = 0;
+	uint32_t max_cnt = 0, bhi_intvec = 0;
 
 
 	if (mhi->use_ipa) {
@@ -1850,10 +1847,29 @@ static void mhi_dev_enable(struct work_struct *work)
 	}
 
 	mhi_uci_init();
-
-	rc = ep_pcie_get_msi_config(mhi->phandle, &msi_cfg);
+	/*Enable MHI dev network stack Interface*/
+	rc = mhi_dev_net_interface_init();
 	if (rc)
-		pr_warn("MHI: error geting msi configs\n");
+		pr_err("%s Failed to initialize mhi_dev_net iface\n", __func__);
+
+	rc = mhi_dev_mmio_read(mhi, BHI_INTVEC, &bhi_intvec);
+	if (rc)
+		return rc;
+
+	if (bhi_intvec != 0xffffffff) {
+		/* Indicate the host that the device is ready */
+		rc = ep_pcie_get_msi_config(mhi->phandle, &msi_cfg);
+		if (rc) {
+			pr_err("MHI: error geting msi configs\n");
+			return;
+		}
+
+		rc = ep_pcie_trigger_msi(mhi_ctx->phandle, bhi_intvec);
+		if (rc) {
+			pr_err("%s: error sending msi\n", __func__);
+			return;
+		}
+	}
 
 	rc = mhi_dev_mmio_get_mhi_state(mhi, &state);
 	if (rc) {
@@ -1861,9 +1877,9 @@ static void mhi_dev_enable(struct work_struct *work)
 		return;
 	}
 
-	while (state != MHI_DEV_M0_STATE && max_cnt < MHI_DEV_M0_MAX_CNT) {
+	while (state != MHI_DEV_M0_STATE && max_cnt < MHI_SUSPEND_TIMEOUT) {
 		/* Wait for Host to set the M0 state */
-		usleep_range(MHI_M0_WAIT_MIN_USLEEP, MHI_M0_WAIT_MAX_USLEEP);
+		msleep(MHI_SUSPEND_MIN);
 		rc = mhi_dev_mmio_get_mhi_state(mhi, &state);
 		if (rc) {
 			pr_err("%s: get mhi state failed\n", __func__);
@@ -2028,7 +2044,6 @@ static int mhi_init(struct mhi_dev *mhi)
 		return rc;
 	}
 
-
 	mhi->ring = devm_kzalloc(&pdev->dev,
 			(sizeof(struct mhi_dev_ring) *
 			(mhi->cfg.channels + mhi->cfg.event_rings + 1)),
@@ -2059,28 +2074,12 @@ static int mhi_init(struct mhi_dev *mhi)
 	return 0;
 }
 
-static int mhi_dev_probe(struct platform_device *pdev)
+static int mhi_dev_resume_mmio_mhi_init(struct mhi_dev *mhi_ctx)
 {
+	struct platform_device *pdev;
 	int rc = 0;
 
-	if (pdev->dev.of_node) {
-		rc = get_device_tree_data(pdev);
-		if (rc) {
-			pr_err("Error reading MHI Dev DT\n");
-			return rc;
-		}
-	}
-
-	mhi_ctx->phandle = ep_pcie_get_phandle(mhi_ctx->ifc_id);
-	if (!mhi_ctx->phandle) {
-		pr_err("PCIe driver is not ready yet.\n");
-		return -EPROBE_DEFER;
-	}
-
-	if (ep_pcie_get_linkstatus(mhi_ctx->phandle) != EP_PCIE_LINK_ENABLED) {
-		pr_err("PCIe link is not ready to use.\n");
-		return -EPROBE_DEFER;
-	}
+	pdev = mhi_ctx->pdev;
 
 	INIT_WORK(&mhi_ctx->chdb_ctrl_work, mhi_dev_scheduler);
 
@@ -2138,6 +2137,12 @@ static int mhi_dev_probe(struct platform_device *pdev)
 		return rc;
 	}
 
+	mhi_ctx->phandle = ep_pcie_get_phandle(mhi_ctx->ifc_id);
+	if (!mhi_ctx->phandle) {
+		pr_err("PCIe driver get handle failed.\n");
+		return -EINVAL;
+	}
+
 	mhi_ctx->event_reg.events = EP_PCIE_EVENT_PM_D3_HOT |
 		EP_PCIE_EVENT_PM_D3_COLD |
 		EP_PCIE_EVENT_PM_D0 |
@@ -2167,7 +2172,11 @@ static int mhi_dev_probe(struct platform_device *pdev)
 	}
 
 	/* Invoke MHI SM when device is in RESET state */
-	mhi_dev_sm_init(mhi_ctx);
+	rc = mhi_dev_sm_init(mhi_ctx);
+	if (rc) {
+		pr_err("%s: Error during SM init\n", __func__);
+		return rc;
+	}
 
 	/* set the env before setting the ready bit */
 	rc = mhi_dev_mmio_set_env(mhi_ctx, MHI_ENV_VALUE);
@@ -2188,6 +2197,66 @@ static int mhi_dev_probe(struct platform_device *pdev)
 		}
 
 		disable_irq(mhi_ctx->mhi_irq);
+	}
+
+	return 0;
+}
+
+void mhi_dev_resume_init_with_link_up(struct ep_pcie_notify *notify)
+{
+	int rc = 0;
+
+	if (!notify) {
+		pr_err("Null argument for notify\n");
+		return;
+	}
+
+	mhi_ctx = notify->user;
+	if (!mhi_ctx) {
+		pr_err("Invalid mhi_ctx\n");
+		return;
+	}
+
+	rc = mhi_dev_resume_mmio_mhi_init(mhi_ctx);
+	if (rc) {
+		pr_err("Error during MHI device initialization\n");
+		return;
+	}
+}
+
+static int mhi_dev_probe(struct platform_device *pdev)
+{
+	int rc = 0;
+
+	if (pdev->dev.of_node) {
+		rc = get_device_tree_data(pdev);
+		if (rc) {
+			pr_err("Error reading MHI Dev DT\n");
+			return rc;
+		}
+	}
+
+	mhi_ctx->phandle = ep_pcie_get_phandle(mhi_ctx->ifc_id);
+	if (mhi_ctx->phandle) {
+		/* PCIe link is already up */
+		rc = mhi_dev_resume_mmio_mhi_init(mhi_ctx);
+		if (rc) {
+			pr_err("Error during MHI device initialization\n");
+			return rc;
+		}
+	} else {
+		pr_debug("Register a PCIe callback\n");
+		mhi_ctx->event_reg.events = EP_PCIE_EVENT_LINKUP;
+		mhi_ctx->event_reg.user = mhi_ctx;
+		mhi_ctx->event_reg.mode = EP_PCIE_TRIGGER_CALLBACK;
+		mhi_ctx->event_reg.callback = mhi_dev_resume_init_with_link_up;
+
+		rc = ep_pcie_register_event(mhi_ctx->phandle,
+							&mhi_ctx->event_reg);
+		if (rc) {
+			pr_err("Failed to register for events from PCIe\n");
+			return rc;
+		}
 	}
 
 	return 0;

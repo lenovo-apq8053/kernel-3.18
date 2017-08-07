@@ -1312,6 +1312,13 @@ static int fastrpc_internal_invoke(struct fastrpc_file *fl, uint32_t mode,
 	int interrupted = 0;
 	int err = 0;
 
+	VERIFY(err, fl->sctx);
+	if (err)
+		goto bail;
+	VERIFY(err, fl->cid >= 0 && fl->cid < NUM_CHANNELS);
+	if (err)
+		goto bail;
+
 	if (!kernel) {
 		VERIFY(err, 0 == context_restore_interrupted(fl, invokefd,
 								&ctx));
@@ -1727,6 +1734,11 @@ static int fastrpc_file_free(struct fastrpc_file *fl)
 	spin_lock(&fl->apps->hlock);
 	hlist_del_init(&fl->hn);
 	spin_unlock(&fl->apps->hlock);
+
+	if (!fl->sctx) {
+		kfree(fl);
+		return 0;
+	}
 
 	(void)fastrpc_release_current_dsp_process(fl);
 	fastrpc_context_list_dtor(fl);

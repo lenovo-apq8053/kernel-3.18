@@ -128,6 +128,8 @@ dtb-$(CONFIG_ARCH_MSM8996) += msm8996-v2-pmi8994-cdp.dtb \
 	apq8096-v3-pmi8996-mdm9x55-slimbus-mtp.dtb \
 	apq8096-v3-pmi8996-dragonboard.dtb
 
+dtb-$(CONFIG_MSM_GVM_QUIN) += vplatform-lfv-msm8996.dtb
+
 dtb-$(CONFIG_ARCH_MSMCOBALT) += msmcobalt-sim.dtb \
 	msmcobalt-rumi.dtb \
 	msmcobalt-cdp.dtb \
@@ -154,20 +156,28 @@ dtb-$(CONFIG_ARCH_MDM9650) += mdm9650-sim.dtb \
 	mdm9650-nand-cdp.dtb \
 	mdm9650-emmc-mtp.dtb \
 	mdm9650-nand-mtp.dtb \
+	mdm9650-ttp.dtb \
 	mdm9650-nand-dualwifi-mtp.dtb \
 	mdm9650-v1.1-emmc-cdp.dtb \
 	mdm9650-v1.1-nand-cdp.dtb \
 	mdm9650-v1.1-emmc-mtp.dtb \
 	mdm9650-v1.1-nand-mtp.dtb \
 	mdm9650-v1.1-nand-dualwifi-mtp.dtb \
-	mdm9650-v1.1-nand-ccard.dtb
+	mdm9650-v1.1-nand-ccard.dtb \
+	mdm9650-v1.1-nand-ccard-v2.dtb
 
-dtb-$(CONFIG_ARCH_SDXHEDGEHOG) += sdxhedgehog-emmc-cdp.dtb \
-	sdxhedgehog-emmc-mtp.dtb \
-	sdxhedgehog-nand-cdp.dtb \
-	sdxhedgehog-nand-mtp.dtb \
-	sdxhedgehog-nand-dualwifi-mtp.dtb \
-	sdxhedgehog-nand-dualwifi-cdp.dtb
+dtb-$(CONFIG_ARCH_SDX20) += sdx20-emmc-cdp.dtb \
+	sdx20-emmc-mtp.dtb \
+	sdx20-nand-cdp.dtb \
+	sdx20-nand-mtp.dtb \
+	sdx20-nand-dualwifi-mtp.dtb \
+	sdx20-nand-dualwifi-cdp.dtb \
+	sdx20-v2-emmc-cdp.dtb \
+	sdx20-v2-emmc-mtp.dtb \
+	sdx20-v2-nand-cdp.dtb \
+	sdx20-v2-nand-mtp.dtb \
+	sdx20-v2-nand-dualwifi-mtp.dtb \
+	sdx20-v2-nand-dualwifi-cdp.dtb
 
 dtb-$(CONFIG_ARCH_MSM8937) += msm8937-rumi.dtb \
 	msm8937-pmi8950-cdp.dtb \
@@ -240,13 +250,25 @@ dtb-$(CONFIG_ARCH_MSM8953) += msm8953-mtp.dtb \
 	apq8053-ext-audio-mtp.dtb \
 	msm8953-ext-codec-mtp.dtb
 
+dtb-$(CONFIG_ARCH_SDM450) += sdm450-rcm.dtb \
+	sdm450-cdp.dtb \
+	sdm450-mtp.dtb \
+	sdm450-qrd.dtb
+
 dtb-$(CONFIG_ARCH_MDM9607) += mdm9607-rumi.dtb \
 	mdm9607-cdp.dtb \
 	mdm9607-mtp.dtb \
 	mdm9607-rcm.dtb \
-	mdm9607-mtp-sdcard.dtb
+	mdm9607-mtp-sdcard.dtb \
+	mdm9607-ttp.dtb \
+	mdm9206-mtp.dtb \
+	mdm9206-cdp.dtb \
+	mdm9206-mtp-sdcard.dtb \
+	mdm9206-rcm.dtb
 
 dtb-$(CONFIG_ARCH_MSM8909) += msm8909-pm8916-mtp.dtb \
+        msm8909-1gb-qrd-skuc.dtb \
+        msm8909-1gb-qrd-skue.dtb \
 	msm8909w-wtp.dtb \
 	apq8009w-wtp.dtb \
 	apq8009w-cdp.dtb \
@@ -268,6 +290,10 @@ dtb-$(CONFIG_ARCH_MSM8909) += msm8909-pm8916-mtp.dtb \
 	apq8009w-1gb-swoctp-circpanel.dtb \
 	apq8009w-1gb-nowgr-swoctp.dtb \
 	apq8009w-1gb-nowgr-swoctp-circpanel.dtb \
+	msm8909w-bg-wtp-v1.dtb \
+	msm8909w-bg-wtp-v2.dtb \
+	apq8009w-bg-wtp-v1.dtb \
+	apq8009w-bg-wtp-v2.dtb \
 	apq8009-mtp-wcd9326.dtb \
 	msm8909-mtp-wcd9326.dtb \
 	msm8909-mtp-wcd9326-refboard.dtb \
@@ -282,6 +308,8 @@ dtb-$(CONFIG_ARCH_MSM8909) += msm8909-pm8916-mtp.dtb \
 	apq8009-512mb-rcm-wcd9326-refboard.dtb \
 	apq8009-cdp-wcd9326-refboard.dtb \
 	apq8009-rcm-wcd9326-refboard.dtb \
+	apq8009-robot-refboard.dtb \
+	apq8009-robot-rome.dtb \
 	apq8009-mtp-drone.dtb \
 	msm8909-mtp.dtb \
 	msm8909-1gb-mtp.dtb

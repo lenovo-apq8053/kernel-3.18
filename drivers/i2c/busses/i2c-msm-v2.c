@@ -1151,10 +1151,18 @@ static void i2c_msm_dma_xfer_unprepare(struct i2c_msm_ctrl *ctrl)
 							buf_itr->dma_dir);
 }
 
-static void i2c_msm_dma_callback_xfer_complete(void *dma_async_param)
+static void i2c_msm_dma_callback_tx_complete(void *dma_async_param)
 {
 	struct i2c_msm_ctrl *ctrl = dma_async_param;
+
 	complete(&ctrl->xfer.complete);
+}
+
+static void i2c_msm_dma_callback_rx_complete(void *dma_async_param)
+{
+	struct i2c_msm_ctrl *ctrl = dma_async_param;
+
+	complete(&ctrl->xfer.rx_complete);
 }
 
 /*
@@ -1269,14 +1277,16 @@ static int i2c_msm_dma_xfer_process(struct i2c_msm_ctrl *ctrl)
 	}
 
 	/* callback defined for tx dma desc */
-	dma_desc_tx->callback       = i2c_msm_dma_callback_xfer_complete;
+	dma_desc_tx->callback       = i2c_msm_dma_callback_tx_complete;
 	dma_desc_tx->callback_param = ctrl;
 	dmaengine_submit(dma_desc_tx);
 	dma_async_issue_pending(tx->dma_chan);
 
 	/* queue the rx dma desc */
 	dma_desc_rx = dmaengine_prep_slave_sg(rx->dma_chan, sg_rx,
-					sg_rx_itr - sg_rx, rx->dir, 0);
+					sg_rx_itr - sg_rx, rx->dir,
+					(SPS_IOVEC_FLAG_EOT |
+							SPS_IOVEC_FLAG_NWD));
 	if (dma_desc_rx < 0) {
 		dev_err(ctrl->dev,
 			"error dmaengine_prep_slave_sg rx:%ld\n",
@@ -1285,6 +1295,8 @@ static int i2c_msm_dma_xfer_process(struct i2c_msm_ctrl *ctrl)
 		goto dma_xfer_end;
 	}
 
+	dma_desc_rx->callback       = i2c_msm_dma_callback_rx_complete;
+	dma_desc_rx->callback_param = ctrl;
 	dmaengine_submit(dma_desc_rx);
 	dma_async_issue_pending(rx->dma_chan);
 
@@ -1297,6 +1309,8 @@ static int i2c_msm_dma_xfer_process(struct i2c_msm_ctrl *ctrl)
 	}
 
 	ret = i2c_msm_xfer_wait_for_completion(ctrl, &ctrl->xfer.complete);
+	if (!ret && ctrl->xfer.rx_cnt)
+		i2c_msm_xfer_wait_for_completion(ctrl, &ctrl->xfer.rx_complete);
 
 dma_xfer_end:
 	/* free scatter-gather lists */
@@ -2054,13 +2068,14 @@ static int i2c_msm_xfer_wait_for_completion(struct i2c_msm_ctrl *ctrl,
 	long  time_left;
 	int   ret = 0;
 
-	time_left = wait_for_completion_timeout(complete, xfer->timeout);
+	time_left = wait_for_completion_timeout(complete,
+						xfer->timeout);
 	if (!time_left) {
 		xfer->err = I2C_MSM_ERR_TIMEOUT;
 		i2c_msm_dbg_dump_diag(ctrl, false, 0, 0);
 		ret = -EIO;
 		i2c_msm_prof_evnt_add(ctrl, MSM_ERR, I2C_MSM_COMPLT_FL,
-						xfer->timeout, time_left, 0);
+					xfer->timeout, time_left, 0);
 	} else {
 		/* return an error if one detected by ISR */
 		if (xfer->err)
@@ -2214,18 +2229,7 @@ static int i2c_msm_pm_clk_enable(struct i2c_msm_ctrl *ctrl)
 static int i2c_msm_pm_xfer_start(struct i2c_msm_ctrl *ctrl)
 {
 	int ret;
-	struct i2c_msm_xfer *xfer = &ctrl->xfer;
 	mutex_lock(&ctrl->xfer.mtx);
-
-	/* if system is suspended just bail out */
-	if (ctrl->pwr_state == I2C_MSM_PM_SYS_SUSPENDED) {
-		struct i2c_msg *msgs = xfer->msgs + xfer->cur_buf.msg_idx;
-		dev_err(ctrl->dev,
-				"slave:0x%x is calling xfer when system is suspended\n",
-				msgs->addr);
-		mutex_unlock(&ctrl->xfer.mtx);
-		return -EIO;
-	}
 
 	i2c_msm_pm_pinctrl_state(ctrl, true);
 	pm_runtime_get_sync(ctrl->dev);
@@ -2312,6 +2316,14 @@ i2c_msm_frmwrk_xfer(struct i2c_adapter *adap, struct i2c_msg msgs[], int num)
 		return PTR_ERR(msgs);
 	}
 
+	/* if system is suspended just bail out */
+	if (ctrl->pwr_state == I2C_MSM_PM_SYS_SUSPENDED) {
+		dev_err(ctrl->dev,
+				"slave:0x%x is calling xfer when system is suspended\n",
+				msgs->addr);
+		return -EIO;
+	}
+
 	ret = i2c_msm_pm_xfer_start(ctrl);
 	if (ret)
 		return ret;
@@ -2327,6 +2339,8 @@ i2c_msm_frmwrk_xfer(struct i2c_adapter *adap, struct i2c_msg msgs[], int num)
 	xfer->tx_ovrhd_cnt = 0;
 	atomic_set(&xfer->event_cnt, 0);
 	init_completion(&xfer->complete);
+	init_completion(&xfer->rx_complete);
+
 	xfer->cur_buf.is_init = false;
 	xfer->cur_buf.msg_idx = 0;
 

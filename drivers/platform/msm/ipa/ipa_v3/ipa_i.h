@@ -46,6 +46,7 @@
 #define IPA3_MAX_NUM_PIPES 31
 #define IPA_SYS_DESC_FIFO_SZ 0x800
 #define IPA_SYS_TX_DATA_DESC_FIFO_SZ 0x1000
+#define IPA_COMMON_EVENT_RING_SIZE 0x7C00
 #define IPA_LAN_RX_HEADER_LENGTH (2)
 #define IPA_QMAP_HEADER_LENGTH (4)
 #define IPA_DL_CHECKSUM_LENGTH (8)
@@ -369,7 +370,8 @@ struct ipa3_hdr_proc_ctx_offset_entry {
 /**
  struct ipa3_hdr_proc_ctx_entry - IPA processing context header table entry
  * @link: entry's link in global header table entries list
- * @type:
+ * @type: header processing context type
+ * @l2tp_params: L2TP parameters
  * @offset_entry: entry's offset
  * @hdr: the header
  * @cookie: cookie used for validity check
@@ -380,6 +382,7 @@ struct ipa3_hdr_proc_ctx_offset_entry {
 struct ipa3_hdr_proc_ctx_entry {
 	struct list_head link;
 	enum ipa_hdr_proc_type type;
+	union ipa_l2tp_hdr_proc_ctx_params l2tp_params;
 	struct ipa3_hdr_proc_ctx_offset_entry *offset_entry;
 	struct ipa3_hdr_entry *hdr;
 	u32 cookie;
@@ -453,6 +456,7 @@ struct ipa3_rt_entry {
 	int id;
 	u16 prio;
 	u16 rule_id;
+	u16 rule_id_valid;
 };
 
 /**
@@ -651,10 +655,12 @@ struct ipa3_repl_ctx {
  */
 struct ipa3_sys_context {
 	u32 len;
+	u32 len_pending_xfer;
 	struct sps_register_event event;
 	atomic_t curr_polling_state;
 	struct delayed_work switch_to_intr_work;
 	enum ipa3_sys_pipe_policy policy;
+	bool use_comm_evt_ring;
 	int (*pyld_hdlr)(struct sk_buff *skb, struct ipa3_sys_context *sys);
 	struct sk_buff * (*get_skb)(unsigned int len, gfp_t flags);
 	void (*free_skb)(struct sk_buff *skb);
@@ -679,6 +685,7 @@ struct ipa3_sys_context {
 	struct list_head head_desc_list;
 	struct list_head rcycl_list;
 	spinlock_t spinlock;
+	struct hrtimer db_timer;
 	struct workqueue_struct *wq;
 	struct workqueue_struct *repl_wq;
 	struct ipa3_status_stats *status_stat;
@@ -768,6 +775,7 @@ struct ipa3_dma_xfer_wrapper {
  * @user1: cookie1 for above callback
  * @user2: cookie2 for above callback
  * @xfer_done: completion object for sync completion
+ * @skip_db_ring: specifies whether GSI doorbell should not be rang
  */
 struct ipa3_desc {
 	enum ipa3_desc_type type;
@@ -781,6 +789,7 @@ struct ipa3_desc {
 	void *user1;
 	int user2;
 	struct completion xfer_done;
+	bool skip_db_ring;
 };
 
 /**
@@ -1072,6 +1081,11 @@ struct ipa3_ready_cb_info {
 	void *user_data;
 };
 
+struct ipa_dma_task_info {
+	struct ipa_mem_buffer mem;
+	struct ipahal_imm_cmd_pyld *cmd_pyld;
+};
+
 /**
  * struct ipa3_context - IPA context
  * @class: pointer to the struct class
@@ -1224,6 +1238,8 @@ struct ipa3_context {
 	struct workqueue_struct *transport_power_mgmt_wq;
 	bool tag_process_before_gating;
 	struct ipa3_transport_pm transport_pm;
+	unsigned long gsi_evt_comm_hdl;
+	u32 gsi_evt_comm_ring_rem;
 	u32 clnt_hdl_cmd;
 	u32 clnt_hdl_data_in;
 	u32 clnt_hdl_data_out;
@@ -1257,6 +1273,7 @@ struct ipa3_context {
 	u32 curr_ipa_clk_rate;
 	bool q6_proxy_clk_vote_valid;
 	u32 ipa_num_pipes;
+	dma_addr_t pkt_init_imm[IPA3_MAX_NUM_PIPES];
 
 	struct ipa3_wlan_comm_memb wc_memb;
 
@@ -1294,6 +1311,7 @@ struct ipa3_context {
 	struct ipa3_smp2p_info smp2p_info;
 	u32 ipa_tz_unlock_reg_num;
 	struct ipa_tz_unlock_reg_info *ipa_tz_unlock_reg;
+	struct ipa_dma_task_info dma_task_info;
 };
 
 /**
@@ -1388,6 +1406,8 @@ struct ipa3_mem_partition {
 	u16 modem_comp_decomp_size;
 	u16 modem_ofst;
 	u16 modem_size;
+	u16 uc_event_ring_ofst;
+	u16 uc_event_ring_size;
 	u16 apps_v4_flt_hash_ofst;
 	u16 apps_v4_flt_hash_size;
 	u16 apps_v4_flt_nhash_ofst;
@@ -1553,6 +1573,8 @@ int ipa3_del_hdr_proc_ctx_by_user(struct ipa_ioc_del_hdr_proc_ctx *hdls,
  */
 int ipa3_add_rt_rule(struct ipa_ioc_add_rt_rule *rules);
 
+int ipa3_add_rt_rule_ext(struct ipa_ioc_add_rt_rule_ext *rules);
+
 int ipa3_add_rt_rule_after(struct ipa_ioc_add_rt_rule_after *rules);
 
 int ipa3_del_rt_rule(struct ipa_ioc_del_rt_rule *hdls);
@@ -1667,6 +1689,8 @@ int ipa3_setup_uc_ntn_pipes(struct ipa_ntn_conn_in_params *in,
 		ipa_notify_cb notify, void *priv, u8 hdr_len,
 		struct ipa_ntn_conn_out_params *outp);
 int ipa3_tear_down_uc_offload_pipes(int ipa_ep_idx_ul, int ipa_ep_idx_dl);
+int ipa3_ntn_uc_reg_rdyCB(void (*ipauc_ready_cb)(void *), void *priv);
+void ipa3_ntn_uc_dereg_rdyCB(void);
 
 /*
  * To retrieve doorbell physical address of
@@ -1883,6 +1907,8 @@ int ipa3_teth_bridge_driver_init(void);
 void ipa3_lan_rx_cb(void *priv, enum ipa_dp_evt_type evt, unsigned long data);
 
 int _ipa_init_sram_v3_0(void);
+int _ipa_init_sram_v3_5(void);
+
 int _ipa_init_hdr_v3_0(void);
 int _ipa_init_rt4_v3(void);
 int _ipa_init_rt6_v3(void);
@@ -2033,4 +2059,7 @@ int ipa3_tz_unlock_reg(struct ipa_tz_unlock_reg_info *reg_info, u16 num_regs);
 struct device *ipa3_get_pdev(void);
 void ipa3_enable_dcd(void);
 void ipa3_disable_prefetch(enum ipa_client_type client);
+int ipa3_alloc_common_event_ring(void);
+int ipa3_allocate_dma_task_for_gsi(void);
+void ipa3_free_dma_task_for_gsi(void);
 #endif /* _IPA3_I_H_ */

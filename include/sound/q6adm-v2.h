@@ -1,4 +1,4 @@
-/* Copyright (c) 2012-2016, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2012-2017, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -34,7 +34,6 @@ enum {
 	ADM_AUDVOL_CAL,
 	ADM_RTAC_INFO_CAL,
 	ADM_RTAC_APR_CAL,
-	ADM_DTS_EAGLE,
 	ADM_SRS_TRUMEDIA,
 	ADM_RTAC_AUDVOL_CAL,
 	ADM_MAX_CAL_TYPES
@@ -63,6 +62,20 @@ struct route_payload {
 	int sample_rate;
 	unsigned short num_copps;
 	unsigned int session_id;
+};
+
+struct default_chmixer_param_id_coeff {
+	uint32_t index;
+	uint16_t num_output_channels;
+	uint16_t num_input_channels;
+};
+
+struct msm_pcm_channel_mixer {
+	int output_channel;
+	int input_channels[ADM_MAX_CHANNELS];
+	bool enable;
+	int rule;
+	int channel_weight[ADM_MAX_CHANNELS][ADM_MAX_CHANNELS];
 };
 
 int srs_trumedia_open(int port_id, int copp_idx, __s32 srs_tech_id,
@@ -164,4 +177,8 @@ int adm_get_sound_focus(int port_id, int copp_idx,
 			struct sound_focus_param *soundFocusData);
 int adm_get_source_tracking(int port_id, int copp_idx,
 			    struct source_tracking_param *sourceTrackingData);
+int adm_programable_channel_mixer(int port_id, int copp_idx, int session_id,
+			int session_type,
+			struct msm_pcm_channel_mixer *ch_mixer,
+			int channel_index);
 #endif /* __Q6_ADM_V2_H__ */

@@ -51,6 +51,7 @@
 #define IPA_UC_FINISH_MAX 6
 #define IPA_UC_WAIT_MIN_SLEEP 1000
 #define IPA_UC_WAII_MAX_SLEEP 1200
+#define IPA_BAM_STOP_MAX_RETRY 10
 
 #define IPA_MAX_STATUS_STAT_NUM 30
 
@@ -837,6 +838,7 @@ struct ipa_active_clients {
 struct ipa_wakelock_ref_cnt {
 	spinlock_t spinlock;
 	u32 cnt;
+	bool wakelock_acquired;
 };
 
 struct ipa_tag_completion {
@@ -1533,6 +1535,8 @@ int ipa2_setup_uc_ntn_pipes(struct ipa_ntn_conn_in_params *inp,
 		ipa_notify_cb notify, void *priv, u8 hdr_len,
 		struct ipa_ntn_conn_out_params *outp);
 int ipa2_tear_down_uc_offload_pipes(int ipa_ep_idx_ul, int ipa_ep_idx_dl);
+int ipa2_ntn_uc_reg_rdyCB(void (*ipauc_ready_cb)(void *), void *priv);
+void ipa2_ntn_uc_dereg_rdyCB(void);
 
 /*
  * To retrieve doorbell physical address of

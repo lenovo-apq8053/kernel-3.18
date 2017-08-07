@@ -1,4 +1,4 @@
-/* Copyright (c) 2012-2016, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2012-2017, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -61,6 +61,12 @@ const char *ipa3_event_name[] = {
 	__stringify(ECM_DISCONNECT),
 	__stringify(IPA_TETHERING_STATS_UPDATE_STATS),
 	__stringify(IPA_TETHERING_STATS_UPDATE_NETWORK_STATS),
+	__stringify(IPA_PER_CLIENT_STATS_CONNECT_EVENT),
+	__stringify(IPA_PER_CLIENT_STATS_DISCONNECT_EVENT),
+	__stringify(ADD_VLAN_IFACE),
+	__stringify(DEL_VLAN_IFACE),
+	__stringify(ADD_L2TP_VLAN_MAPPING),
+	__stringify(DEL_L2TP_VLAN_MAPPING)
 };
 
 const char *ipa3_hdr_l2_type_name[] = {
@@ -75,6 +81,8 @@ const char *ipa3_hdr_proc_type_name[] = {
 	__stringify(IPA_HDR_PROC_ETHII_TO_802_3),
 	__stringify(IPA_HDR_PROC_802_3_TO_ETHII),
 	__stringify(IPA_HDR_PROC_802_3_TO_802_3),
+	__stringify(IPA_HDR_PROC_L2TP_HEADER_ADD),
+	__stringify(IPA_HDR_PROC_L2TP_HEADER_REMOVE),
 };
 
 static struct dentry *dent;
@@ -106,6 +114,7 @@ static char dbg_buff[IPA_MAX_MSG_LEN];
 static char *active_clients_buf;
 
 static s8 ep_reg_idx;
+static void *ipa_ipc_low_buff;
 
 
 static ssize_t ipa3_read_gen_reg(struct file *file, char __user *ubuf,
@@ -488,7 +497,8 @@ static int ipa3_attrib_dump(struct ipa_rule_attrib *attrib,
 	}
 
 	if ((attrib->attrib_mask & IPA_FLT_MAC_DST_ADDR_ETHER_II) ||
-		(attrib->attrib_mask & IPA_FLT_MAC_DST_ADDR_802_3)) {
+		(attrib->attrib_mask & IPA_FLT_MAC_DST_ADDR_802_3) ||
+		(attrib->attrib_mask & IPA_FLT_MAC_DST_ADDR_L2TP)) {
 		pr_err("dst_mac_addr:%pM ", attrib->dst_mac_addr);
 	}
 
@@ -1154,12 +1164,7 @@ static ssize_t ipa3_read_ntn(struct file *file, char __user *ubuf,
 			"TX bamFifoUsageLow=%u\n"
 			"TX bamUtilCount=%u\n"
 			"TX num_db=%u\n"
-			"TX num_unexpected_db=%u\n"
-			"TX num_bam_int_handled=%u\n"
-			"TX num_bam_int_in_non_running_state=%u\n"
-			"TX num_qmb_int_handled=%u\n"
-			"TX num_bam_int_handled_while_wait_for_bam=%u\n"
-			"TX num_bam_int_handled_while_not_in_bam=%u\n",
+			"TX num_qmb_int_handled=%u\n",
 			TX_STATS(num_pkts_processed),
 			TX_STATS(tail_ptr_val),
 			TX_STATS(num_db_fired),
@@ -1174,12 +1179,7 @@ static ssize_t ipa3_read_ntn(struct file *file, char __user *ubuf,
 			TX_STATS(bam_stats.bamFifoUsageLow),
 			TX_STATS(bam_stats.bamUtilCount),
 			TX_STATS(num_db),
-			TX_STATS(num_unexpected_db),
-			TX_STATS(num_bam_int_handled),
-			TX_STATS(num_bam_int_in_non_running_state),
-			TX_STATS(num_qmb_int_handled),
-			TX_STATS(num_bam_int_handled_while_wait_for_bam),
-			TX_STATS(num_bam_int_handled_while_not_in_bam));
+			TX_STATS(num_qmb_int_handled));
 		cnt += nbytes;
 		nbytes = scnprintf(dbg_buff + cnt, IPA_MAX_MSG_LEN - cnt,
 			"RX max_outstanding_pkts=%u\n"
@@ -1195,12 +1195,7 @@ static ssize_t ipa3_read_ntn(struct file *file, char __user *ubuf,
 			"RX bamFifoUsageHigh=%u\n"
 			"RX bamFifoUsageLow=%u\n"
 			"RX bamUtilCount=%u\n"
-			"RX num_bam_int_handled=%u\n"
-			"RX num_db=%u\n"
-			"RX num_unexpected_db=%u\n"
-			"RX num_pkts_in_dis_uninit_state=%u\n"
-			"num_ic_inj_vdev_change=%u\n"
-			"num_ic_inj_fw_desc_change=%u\n",
+			"RX num_db=%u\n",
 			RX_STATS(max_outstanding_pkts),
 			RX_STATS(num_pkts_processed),
 			RX_STATS(rx_ring_rp_value),
@@ -1214,12 +1209,7 @@ static ssize_t ipa3_read_ntn(struct file *file, char __user *ubuf,
 			RX_STATS(bam_stats.bamFifoUsageHigh),
 			RX_STATS(bam_stats.bamFifoUsageLow),
 			RX_STATS(bam_stats.bamUtilCount),
-			RX_STATS(num_bam_int_handled),
-			RX_STATS(num_db),
-			RX_STATS(num_unexpected_db),
-			RX_STATS(num_pkts_in_dis_uninit_state),
-			RX_STATS(num_bam_int_handled_while_not_in_bam),
-			RX_STATS(num_bam_int_handled_while_in_bam_state));
+			RX_STATS(num_db));
 		cnt += nbytes;
 	} else {
 		nbytes = scnprintf(dbg_buff, IPA_MAX_MSG_LEN,
@@ -1297,8 +1287,9 @@ static ssize_t ipa3_read_wdi(struct file *file, char __user *ubuf,
 			"RX num_db=%u\n"
 			"RX num_unexpected_db=%u\n"
 			"RX num_pkts_in_dis_uninit_state=%u\n"
-			"num_ic_inj_vdev_change=%u\n"
-			"num_ic_inj_fw_desc_change=%u\n"
+			"RX num_ic_inj_vdev_change=%u\n"
+			"RX num_ic_inj_fw_desc_change=%u\n"
+			"RX num_qmb_int_handled=%u\n"
 			"RX reserved1=%u\n"
 			"RX reserved2=%u\n",
 			stats.rx_ch_stats.max_outstanding_pkts,
@@ -1320,6 +1311,7 @@ static ssize_t ipa3_read_wdi(struct file *file, char __user *ubuf,
 			stats.rx_ch_stats.num_pkts_in_dis_uninit_state,
 			stats.rx_ch_stats.num_ic_inj_vdev_change,
 			stats.rx_ch_stats.num_ic_inj_fw_desc_change,
+			stats.rx_ch_stats.num_qmb_int_handled,
 			stats.rx_ch_stats.reserved1,
 			stats.rx_ch_stats.reserved2);
 		cnt += nbytes;
@@ -1715,22 +1707,20 @@ static ssize_t ipa3_enable_ipc_low(struct file *file,
 	if (kstrtos8(dbg_buff, 0, &option))
 		return -EFAULT;
 
+	mutex_lock(&ipa3_ctx->lock);
 	if (option) {
-		if (!ipa3_ctx->logbuf_low) {
-			ipa3_ctx->logbuf_low =
+		if (!ipa_ipc_low_buff) {
+			ipa_ipc_low_buff =
 				ipc_log_context_create(IPA_IPC_LOG_PAGES,
 					"ipa_low", 0);
 		}
-
-		if (ipa3_ctx->logbuf_low == NULL) {
-			IPAERR("failed to get logbuf_low\n");
-			return -EFAULT;
-		}
+			if (ipa_ipc_low_buff == NULL)
+				IPAERR("failed to get logbuf_low\n");
+		ipa3_ctx->logbuf_low = ipa_ipc_low_buff;
 	} else {
-		if (ipa3_ctx->logbuf_low)
-			ipc_log_context_destroy(ipa3_ctx->logbuf_low);
 		ipa3_ctx->logbuf_low = NULL;
 	}
+	mutex_unlock(&ipa3_ctx->lock);
 
 	return count;
 }

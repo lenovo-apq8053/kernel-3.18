@@ -22,6 +22,8 @@
 #include <linux/sched.h>
 #include <linux/ratelimit.h>
 #include <linux/timer.h>
+#include <linux/platform_device.h>
+#include <linux/msm_mhi.h>
 #ifdef CONFIG_DIAG_OVER_USB
 #include <linux/usb/usbdiag.h>
 #endif
@@ -965,6 +967,11 @@ static int diag_send_raw_data_remote(int proc, void *buf, int len,
 		hdlc_disabled = driver->hdlc_disabled;
 	if (hdlc_disabled) {
 		payload = *(uint16_t *)(buf + 2);
+		if (payload > DIAG_MAX_HDLC_BUF_SIZE) {
+			pr_err("diag: Dropping packet, payload size is %d\n",
+				payload);
+			return -EBADMSG;
+		}
 		driver->hdlc_encode_buf_len = payload;
 		/*
 		 * Adding 4 bytes for start (1 byte), version (1 byte) and
@@ -2196,7 +2203,9 @@ long diagchar_ioctl(struct file *filp,
 		mutex_unlock(&driver->dci_mutex);
 		break;
 	case DIAG_IOCTL_DCI_EVENT_STATUS:
+		mutex_lock(&driver->dci_mutex);
 		result = diag_ioctl_dci_event_status(ioarg);
+		mutex_unlock(&driver->dci_mutex);
 		break;
 	case DIAG_IOCTL_DCI_CLEAR_LOGS:
 		mutex_lock(&driver->dci_mutex);
@@ -3353,6 +3362,41 @@ static int diagchar_cleanup(void)
 	return 0;
 }
 
+static int diag_mhi_probe(struct platform_device *pdev)
+{
+	int ret;
+
+	if (!mhi_is_device_ready(&pdev->dev, "qcom,mhi"))
+		return -EPROBE_DEFER;
+	driver->pdev = pdev;
+	ret = diag_remote_init();
+	if (ret) {
+		diag_remote_exit();
+		return ret;
+	}
+	ret = diagfwd_bridge_init();
+	if (ret) {
+		diagfwd_bridge_exit();
+		return ret;
+	}
+	pr_debug("diag: mhi device is ready\n");
+	return 0;
+}
+
+static const struct of_device_id diag_mhi_table[] = {
+	{.compatible = "qcom,diag-mhi"},
+	{},
+};
+
+static struct platform_driver diag_mhi_driver = {
+	.probe = diag_mhi_probe,
+	.driver = {
+		.name = "DIAG MHI Platform",
+		.owner = THIS_MODULE,
+		.of_match_table = diag_mhi_table,
+	},
+};
+
 static int __init diagchar_init(void)
 {
 	dev_t dev;
@@ -3403,6 +3447,7 @@ static int __init diagchar_init(void)
 	mutex_init(&driver->diag_file_mutex);
 	mutex_init(&driver->delayed_rsp_mutex);
 	mutex_init(&apps_data_mutex);
+	mutex_init(&driver->msg_mask_lock);
 	for (i = 0; i < NUM_PERIPHERALS; i++)
 		mutex_init(&driver->diagfwd_channel_mutex[i]);
 	init_waitqueue_head(&driver->wait_q);
@@ -3433,9 +3478,6 @@ static int __init diagchar_init(void)
 	if (ret)
 		goto fail;
 	ret = diag_masks_init();
-	if (ret)
-		goto fail;
-	ret = diag_remote_init();
 	if (ret)
 		goto fail;
 	ret = diag_mux_init();
@@ -3474,9 +3516,7 @@ static int __init diagchar_init(void)
 		goto fail;
 
 	pr_debug("diagchar initialized now");
-	ret = diagfwd_bridge_init();
-	if (ret)
-		diagfwd_bridge_exit();
+	platform_driver_register(&diag_mhi_driver);
 	return 0;
 
 fail:
@@ -3490,9 +3530,7 @@ fail:
 	diagfwd_cntl_exit();
 	diag_dci_exit();
 	diag_masks_exit();
-	diag_remote_exit();
 	return -1;
-
 }
 
 static void diagchar_exit(void)
