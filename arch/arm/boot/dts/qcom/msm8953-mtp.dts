@@ -21,3 +21,7 @@
 	compatible = "qcom,msm8953-mtp", "qcom,msm8953", "qcom,mtp";
 	qcom,board-id= <8 0>;
 };
+
+&blsp2_uart0 {
+	status = "ok";
+};
