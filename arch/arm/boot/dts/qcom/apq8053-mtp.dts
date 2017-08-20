@@ -38,3 +38,7 @@
 	/* use external rsense for parallel charging */
 	qcom,ext-sense-type;
 };
+
+&blsp2_uart0 {
+	status = "ok";
+};
