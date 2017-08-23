@@ -78,3 +78,7 @@
 &wcd_rst_gpio {
 	status = "okay";
 };
+
+&blsp2_uart0 {
+	status = "okay";
+};
