@@ -21,3 +21,7 @@
 	compatible = "qcom,apq8053-dragon", "qcom,apq8053", "qcom,dragon", "itc,rev1";
 	qcom,board-id= <10 0x1>;
 };
+
+&blsp2_uart1 {
+        status = "ok";
+};
