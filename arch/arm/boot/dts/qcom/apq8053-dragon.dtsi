@@ -268,7 +268,7 @@
 };
 
 &mdss_dsi0 {
-	qcom,dsi-pref-prim-pan = <&dsi_truly_1080_vid>;
+	qcom,dsi-pref-prim-pan = <&dsi_truly_wuxga_vid>;
 	pinctrl-names = "mdss_default", "mdss_sleep";
 	pinctrl-0 = <&mdss_dsi_active &mdss_te_active>;
 	pinctrl-1 = <&mdss_dsi_suspend &mdss_te_suspend>;
@@ -293,6 +293,15 @@
 
 	/delete-property/ lab-supply;
 	/delete-property/ ibb-supply;
+};
+
+&dsi_truly_wuxga_vid {
+        qcom,mdss-dsi-bl-pmic-control-type = "bl_ctrl_pwm";
+        qcom,mdss-dsi-bl-pmic-pwm-frequency = <100>;
+        qcom,mdss-dsi-bl-pmic-bank-select = <0>;
+        qcom,mdss-dsi-pwm-gpio = <&pm8953_mpps 4 0>;
+        qcom,mdss-dsi-pan-enable-dynamic-fps;
+        qcom,mdss-dsi-pan-fps-update = "dfps_immediate_clk_mode";
 };
 
 &dsi_adv7533_1080p {
