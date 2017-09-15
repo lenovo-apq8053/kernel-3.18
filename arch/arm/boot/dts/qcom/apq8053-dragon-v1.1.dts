@@ -25,3 +25,8 @@
 &blsp2_uart1 {
         status = "ok";
 };
+
+&i2c_2 {
+       /delete-property/ adv7533@39;
+       status = "ok";
+};
