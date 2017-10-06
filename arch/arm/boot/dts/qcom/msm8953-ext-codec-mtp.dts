@@ -78,3 +78,7 @@
 	qcom,model = "msm8953-tasha-snd-card";
 	status = "okay";
 };
+
+&blsp2_uart0 {
+	status = "okay";
+};
