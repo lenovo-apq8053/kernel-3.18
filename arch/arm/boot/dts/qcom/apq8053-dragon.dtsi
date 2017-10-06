@@ -354,6 +354,8 @@
 };
 
 &dsi_truly_wuxga_vid {
+        qcom,mdss-dsi-panel-height = <1020>;
+        qcom,mdss-dsi-v-top-border = <180>;
         qcom,mdss-dsi-bl-pmic-control-type = "bl_ctrl_pwm";
         qcom,mdss-dsi-bl-pmic-pwm-frequency = <100>;
         qcom,mdss-dsi-bl-pmic-bank-select = <0>;

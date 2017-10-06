@@ -1671,7 +1671,8 @@ static void mdss_mdp_fetch_start_config(struct mdss_mdp_video_ctx *ctx,
 	mdata = ctl->mdata;
 
 	pinfo->prg_fet = mdss_mdp_get_prefetch_lines(pinfo);
-	if (!pinfo->prg_fet) {
+	if ((!pinfo->prg_fet)||(pinfo->lcdc.border_top)||
+                (pinfo->lcdc.border_bottom)) {
 		pr_debug("programmable fetch is not needed/supported\n");
 		return;
 	}
