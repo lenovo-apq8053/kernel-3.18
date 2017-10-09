@@ -109,11 +109,6 @@
 			debounce-interval = <15>;
 		};
 	};
-
-	bluetooth: bt_qca6174 {
-		compatible = "qca,qca6174";
-		qca,bt-reset-gpio = <&tlmm 76 0>; /* BT_EN */
-	};
 };
 
 &rpm_bus {
