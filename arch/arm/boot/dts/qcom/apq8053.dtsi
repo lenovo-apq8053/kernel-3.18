@@ -50,7 +50,7 @@
 };
 
 &secure_mem {
-	status = "disabled";
+	status = "okay";
 };
 
 &clock_gcc {
