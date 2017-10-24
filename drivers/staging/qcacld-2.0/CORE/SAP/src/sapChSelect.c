@@ -139,7 +139,6 @@
 #define ACS_WEIGHT_SOFTAP_TX_POWER_THROUGHPUT_CFG(weights) \
 	(((weights) & 0xf00000) >> 20)
 
-
 #ifdef FEATURE_WLAN_CH_AVOID
 sapSafeChannelType safeChannels[NUM_20MHZ_RF_CHANNELS] =
 {
@@ -363,9 +362,7 @@ sap_process_avoid_ie(tHalHandle hal,
 	node = sme_ScanResultGetFirst(hal, scan_result);
 
 	while (node) {
-		total_ie_len = (node->BssDescriptor.length +
-				sizeof(tANI_U16) + sizeof(tANI_U32) -
-				sizeof(tSirBssDescription));
+		total_ie_len = GET_IE_LEN_IN_BSS(node->BssDescriptor.length);
 		temp_ptr = cfg_get_vendor_ie_ptr_from_oui(mac_ctx,
 				SIR_MAC_QCOM_VENDOR_OUI,
 				SIR_MAC_QCOM_VENDOR_SIZE,
@@ -375,6 +372,7 @@ sap_process_avoid_ie(tHalHandle hal,
 		if (temp_ptr) {
 			avoid_ch_ie = (struct sAvoidChannelIE*)temp_ptr;
 			if (avoid_ch_ie->type != QCOM_VENDOR_IE_MCC_AVOID_CH) {
+				node = sme_ScanResultGetNext(hal, scan_result);
 				continue;
 			}
 			sap_ctx->sap_detected_avoid_ch_ie.present = 1;
@@ -653,7 +651,6 @@ v_U8_t sapSelectPreferredChannelFromChannelList(v_U8_t bestChNum,
   PARAMETERS
 
     IN
-    sap_ctx     : Softap context
     halHandle          : Pointer to tHalHandle
     *pSpectInfoParams  : Pointer to tSapChSelSpectInfo structure
      pSapCtx           : Pointer to SAP Context
@@ -781,6 +778,7 @@ v_BOOL_t sapChanSelInit(tHalHandle halHandle,
   PARAMETERS
 
     IN
+    sap_ctx     : Softap context
     rssi        : Max signal strength receieved from a BSS for the channel
     count       : Number of BSS observed in the channel
 
@@ -811,20 +809,18 @@ v_U32_t sapweightRssiCount(ptSapContext sap_ctx, v_S7_t rssi, v_U16_t count)
         ACS_WEIGHT_CFG_TO_LOCAL(sap_ctx->auto_channel_select_weight,
                                 softap_count_weight_cfg);
 
-
     // Weight from RSSI
     rssiWeight = ACS_WEIGHT_COMPUTE(sap_ctx->auto_channel_select_weight,
                                     softap_rssi_weight_cfg,
                                     rssi - SOFTAP_MIN_RSSI,
                                     SOFTAP_MAX_RSSI - SOFTAP_MIN_RSSI);
+
     if(rssiWeight > softap_rssi_weight_local)
         rssiWeight = softap_rssi_weight_local;
-
     else if (rssiWeight < 0)
         rssiWeight = 0;
 
     // Weight from data count
-
     countWeight = ACS_WEIGHT_COMPUTE(sap_ctx->auto_channel_select_weight,
                                      softap_count_weight_cfg,
                                      count - SOFTAP_MIN_COUNT,
@@ -841,6 +837,7 @@ v_U32_t sapweightRssiCount(ptSapContext sap_ctx, v_S7_t rssi, v_U16_t count)
     return(rssicountWeight);
 }
 
+
 /**
  * sap_get_channel_status() - get channel info via channel number
  * @p_mac: Pointer to Global MAC structure
@@ -849,9 +846,9 @@ v_U32_t sapweightRssiCount(ptSapContext sap_ctx, v_S7_t rssi, v_U16_t count)
  * Return: chan status info
  */
 struct lim_channel_status *sap_get_channel_status
-       (tpAniSirGlobal p_mac, uint32_t channel_id)
+	(tpAniSirGlobal p_mac, uint32_t channel_id)
 {
-       return csr_get_channel_status(p_mac, channel_id);
+	return csr_get_channel_status(p_mac, channel_id);
 }
 
 /**
@@ -862,14 +859,15 @@ struct lim_channel_status *sap_get_channel_status
  */
 void sap_clear_channel_status(tpAniSirGlobal p_mac)
 {
-       csr_clear_channel_status(p_mac);
+	csr_clear_channel_status(p_mac);
 }
 
 /**
- * sap_weight_channel_noise_floor() - compute chan floor weight
+ * sap_weight_channel_noise_floor() - compute noise floor weight
+ * @sap_ctx:  sap context
  * @chn_stat: Pointer to chan status info
  *
- * Return: chan noise floor weight
+ * Return: channel noise floor weight
  */
 uint32_t sap_weight_channel_noise_floor(ptSapContext sap_ctx,
 	struct lim_channel_status *channel_stat)
@@ -921,17 +919,15 @@ uint32_t sap_weight_channel_noise_floor(ptSapContext sap_ctx,
  * @chn_stat: Pointer to chan status info
  *
  * Return: channel free weight
-  */
-
+ */
 uint32_t sap_weight_channel_free(ptSapContext sap_ctx,
 	struct lim_channel_status *channel_stat)
-
 {
-       uint32_t     channel_free_weight;
-       uint8_t      softap_channel_free_weight_cfg;
-       uint8_t      softap_channel_free_weight_local;
-       uint32_t     rx_clear_count = 0;
-       uint32_t     cycle_count = 0;
+	uint32_t     channel_free_weight;
+	uint8_t      softap_channel_free_weight_cfg;
+	uint8_t      softap_channel_free_weight_local;
+	uint32_t     rx_clear_count = 0;
+	uint32_t     cycle_count = 0;
 
 	softap_channel_free_weight_cfg =
 	    ACS_WEIGHT_SOFTAP_CHANNEL_FREE_CFG
@@ -948,31 +944,35 @@ uint32_t sap_weight_channel_free(ptSapContext sap_ctx,
 		return softap_channel_free_weight_local;
 	}
 
+	rx_clear_count = channel_stat->rx_clear_count -
+			 channel_stat->tx_frame_count -
+			 channel_stat->rx_frame_count;
+	cycle_count = channel_stat->cycle_count;
 
-       rx_clear_count = channel_stat->rx_clear_count;
-       cycle_count = channel_stat->cycle_count;
 	/* LSH 4, otherwise it is always 0. */
 	channel_free_weight = (cycle_count == 0) ? 0 :
 			 (ACS_WEIGHT_COMPUTE(
 			  sap_ctx->auto_channel_select_weight,
 			  softap_channel_free_weight_cfg,
 			  ((rx_clear_count << 8) +
-	                  (cycle_count >> 1))/cycle_count -
+			   (cycle_count >> 1))/cycle_count -
 			  (SOFTAP_MIN_CHNFREE << 8),
 			  (SOFTAP_MAX_CHNFREE -
 			   SOFTAP_MIN_CHNFREE) << 8));
 
-       if (channel_free_weight > softap_channel_free_weight_local)
+	if (channel_free_weight > softap_channel_free_weight_local)
 		channel_free_weight = softap_channel_free_weight_local;
 
 	VOS_TRACE(VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_INFO_HIGH,
-		  "In %s, rcc=%d, cc=%d, cfwc=%d, cfwl=%d, cfw=%d",
+		  "In %s, rcc=%d, cc=%d, tc=%d, rc=%d, cfwc=%d, cfwl=%d, cfw=%d",
 		  __func__, rx_clear_count, cycle_count,
+		  channel_stat->tx_frame_count,
+		  channel_stat->rx_frame_count,
 		  softap_channel_free_weight_cfg,
 		  softap_channel_free_weight_local,
 		  channel_free_weight);
 
-       return channel_free_weight;
+	return channel_free_weight;
 }
 
 /**
@@ -1011,18 +1011,18 @@ uint32_t sap_weight_channel_txpwr_range(ptSapContext sap_ctx,
 				 SOFTAP_MAX_TXPWR -
 				 channel_stat->chan_tx_pwr_range,
 				 SOFTAP_MAX_TXPWR - SOFTAP_MIN_TXPWR));
+
 	if (txpwr_weight_low_speed > softap_txpwr_range_weight_local)
 		txpwr_weight_low_speed = softap_txpwr_range_weight_local;
 
-
-        VOS_TRACE(VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_INFO_HIGH,
+	VOS_TRACE(VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_INFO_HIGH,
 		  "In %s, tpr=%d, tprwc=%d, tprwl=%d, tprw=%d",
 		  __func__, channel_stat->chan_tx_pwr_range,
 		  softap_txpwr_range_weight_cfg,
 		  softap_txpwr_range_weight_local,
 		  txpwr_weight_low_speed);
 
-        return txpwr_weight_low_speed;
+	return txpwr_weight_low_speed;
 }
 
 /**
@@ -1065,8 +1065,7 @@ uint32_t sap_weight_channel_txpwr_tput(ptSapContext sap_ctx,
 	if (txpwr_weight_high_speed > softap_txpwr_tput_weight_local)
 		txpwr_weight_high_speed = softap_txpwr_tput_weight_local;
 
-       VOS_TRACE(VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_INFO_HIGH,
-
+	VOS_TRACE(VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_INFO_HIGH,
 		  "In %s, tpt=%d, tptwc=%d, tptwl=%d, tptw=%d",
 		  __func__, channel_stat->chan_tx_pwr_throughput,
 		  softap_txpwr_tput_weight_cfg,
@@ -1908,7 +1907,7 @@ void sapComputeSpectWeight( tSapChSelSpectInfo* pSpectInfoParams,
         vhtSupport = 0;
         centerFreq = 0;
 
-        ieLen = (pScanResult->BssDescriptor.length + sizeof(tANI_U16) + sizeof(tANI_U32) - sizeof(tSirBssDescription));
+        ieLen = GET_IE_LEN_IN_BSS(pScanResult->BssDescriptor.length);
         vos_mem_set((tANI_U8 *) pBeaconStruct, sizeof(tSirProbeRespBeacon), 0);
 
         if ((sirParseBeaconIE(pMac, pBeaconStruct,(tANI_U8 *)( pScanResult->BssDescriptor.ieFields), ieLen)) == eSIR_SUCCESS)
@@ -2192,7 +2191,7 @@ void sapComputeSpectWeight( tSapChSelSpectInfo* pSpectInfoParams,
                 }
 
                 VOS_TRACE(VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_INFO_HIGH,
-                   "In %s, bssdes.ch_self=%d, bssdes.ch_ID=%d, bssdes.rssi=%d, SpectCh.bssCount=%d, pScanResult=%p, ChannelWidth %d, secondaryChanOffset %d, center frequency %d",
+                   "In %s, bssdes.ch_self=%d, bssdes.ch_ID=%d, bssdes.rssi=%d, SpectCh.bssCount=%d, pScanResult=%pK, ChannelWidth %d, secondaryChanOffset %d, center frequency %d",
                   __func__, pScanResult->BssDescriptor.channelIdSelf,
                  pScanResult->BssDescriptor.channelId,
                  pScanResult->BssDescriptor.rssi, pSpectCh->bssCount,
@@ -2224,10 +2223,10 @@ void sapComputeSpectWeight( tSapChSelSpectInfo* pSpectInfoParams,
         rssi = (v_S7_t)pSpectCh->rssiAgr;
 
         pSpectCh->weight = SAPDFS_NORMALISE_1000 *
-            (sapweightRssiCount(sap_ctx, rssi, pSpectCh->bssCount)
-            + sap_weight_channel_status(sap_ctx,
-            sap_get_channel_status(pMac, pSpectCh->chNum)));
-	if (pSpectCh->weight > ACS_WEIGHT_MAX)
+                (sapweightRssiCount(sap_ctx, rssi, pSpectCh->bssCount)
+                 + sap_weight_channel_status(sap_ctx,
+                 sap_get_channel_status(pMac, pSpectCh->chNum)));
+        if (pSpectCh->weight > ACS_WEIGHT_MAX)
             pSpectCh->weight = ACS_WEIGHT_MAX;
         pSpectCh->weight_copy = pSpectCh->weight;
 
@@ -2239,7 +2238,6 @@ void sapComputeSpectWeight( tSapChSelSpectInfo* pSpectInfoParams,
         //------ Debug Info ------
         pSpectCh++;
     }
-
     sap_clear_channel_status(pMac);
     vos_mem_free(pBeaconStruct);
 }
@@ -2859,7 +2857,7 @@ v_U8_t sapSelectChannel(tHalHandle halHandle, ptSapContext pSapCtx,  tScanResult
      * then skip acs process if no bss found.
      */
     if (NULL == pScanResult &&
-	!(pSapCtx->auto_channel_select_weight & 0xffff00))
+        !(pSapCtx->auto_channel_select_weight & 0xffff00))
     {
         VOS_TRACE(VOS_MODULE_ID_SAP, VOS_TRACE_LEVEL_INFO_HIGH,
                   "%s: No external AP present", __func__);
@@ -3055,7 +3053,7 @@ v_U8_t sapSelectChannel(tHalHandle halHandle, ptSapContext pSapCtx,  tScanResult
                                  pSapCtx->acsBestChannelInfo.weight))
                     {
                         tmpChNum = pSpectInfoParams->pSpectCh[count].chNum;
-	                tmpChNum = sap_channel_in_acs_channel_list(
+                        tmpChNum = sap_channel_in_acs_channel_list(
                                        tmpChNum, pSapCtx, pSpectInfoParams);
                         if ( tmpChNum != SAP_CHANNEL_NOT_SELECTED)
                         {
