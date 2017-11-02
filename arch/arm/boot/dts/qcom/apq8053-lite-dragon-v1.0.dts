@@ -21,3 +21,7 @@
 	compatible = "qcom,apq8053-lite-dragonboard", "qcom,apq8053", "qcom,dragonboard";
 	qcom,board-id= <0x0102000A 0>;
 };
+
+&blsp2_uart0 {
+	status = "okay";
+};
