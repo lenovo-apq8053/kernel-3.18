@@ -13,6 +13,7 @@
 
 #include "msm8953-pinctrl.dtsi"
 #include "apq8053-camera-sensor-dragon.dtsi"
+#include "msm-pmi8950.dtsi"
 
 &soc {
 	vreg_5p0: vreg_5p0 {
@@ -235,7 +236,7 @@
 };
 
 &mdss_dsi {
-	hw-config = "dual_dsi";
+	hw-config = "single_dsi";
 };
 
 &mdss_dsi_active {
@@ -273,8 +274,6 @@
 
 	vdd-supply = <&pm8953_l10>;
 	vddio-supply = <&pm8953_l6>;
-	/delete-property/ lab-supply;
-	/delete-property/ ibb-supply;
 
 	qcom,platform-te-gpio = <&tlmm 24 0>;
 	qcom,platform-reset-gpio = <&tlmm 61 0>;
@@ -282,6 +281,7 @@
 };
 
 &mdss_dsi1 {
+	status = "disabled";
 	qcom,dsi-pref-prim-pan = <&dsi_adv7533_1080p>;
 	qcom,bridge-index = <0>;
 	qcom,pluggable;
@@ -291,6 +291,11 @@
 
 	/delete-property/ lab-supply;
 	/delete-property/ ibb-supply;
+};
+
+&labibb {
+        status = "ok";
+        qpnp,qpnp-labibb-mode = "lcd";
 };
 
 &soc {
@@ -495,7 +500,7 @@
 };
 
 &wled {
-	status = "disabled";
+	qcom,cons-sync-write-delay-us = <1000>;
 };
 
 &flash_led {
