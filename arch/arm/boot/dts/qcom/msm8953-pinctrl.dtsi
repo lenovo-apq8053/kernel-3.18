@@ -21,6 +21,35 @@
 		interrupt-controller;
 		#interrupt-cells = <2>;
 
+                /* add pingrp for touchscreen */
+                gdix_ts_int {
+			/* qcom,pins = <&gp 6>; */
+                        pins = "gpio65";
+			qcom,pin-func = <0>;
+			/* qcom,num-grp-pins = <1>; */
+			label = "gdix_ts_int";
+
+			ts_int_default: ts_int_defalut {
+				drive-strength = <16>;
+				/*bias-pull-up;*/
+				input-enable;
+				bias-disable;
+			};
+
+			ts_int_output_high: ts_int_output_high {
+				output-high;
+			};
+
+			ts_int_output_low: ts_int_output_low {
+			        output-low;
+			};
+
+			ts_int_input: ts_int_input {
+				input-enable;
+				bias-disable;
+			};
+		};
+
 		pmx-uartconsole {
 			uart_console_active: uart_console_active {
 				mux {
