@@ -2004,6 +2004,7 @@ s32 gup_update_proc(void *dir)
 	if (FAIL == ret) {
 		dev_err(&ts->client->dev,
 			"Failed get valied firmware data\n");
+		clear_bit(FW_UPDATE_RUNNING, &ts->flags);
 		return FAIL;
 	}
 
