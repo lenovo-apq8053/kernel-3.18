@@ -405,11 +405,16 @@ u8 gtp_get_points(struct goodix_ts_data *ts, struct goodix_point_t *points,
 		/* if pen hover points[].p must set to zero */
 		points[i].p = coor_data[5] | (coor_data[6] << 8);
 
+		//points[i].y = ts->pdata->abs_size_y -1 - points[i].y;
+
+		dev_err(&ts->client->dev, "goodix ===== x: %d, y: %d\n",
+			points[i].x, points[i].y);
+
 		if (ts->pdata->swap_x2y)
 			GTP_SWAP(points[i].x, points[i].y);
 
 		/* TODO: Following code only for debug use */
-		points[i].y = ts->pdata->abs_size_y - points[i].y;
+		//points[i].y = ts->pdata->abs_size_y - points[i].y;
 		//dev_info(&ts->client->dev, "[%d][%d %d %d]\n",
 		//	 points[i].id, points[i].x, points[i].y, points[i].p);
 
@@ -990,39 +995,55 @@ static s32 gtp_init_panel(struct goodix_ts_data *ts)
 static ssize_t gtp_config_read_proc(struct file *file, char __user *page,
 				    size_t size, loff_t *ppos)
 {
-	int i;
-	char *ptr = page;
+	int i, ret;
+	char *ptr;
+	size_t data_len = 0;
 	char temp_data[GTP_CONFIG_MAX_LENGTH + 2] = {
 					(u8)(GTP_REG_CONFIG_DATA >> 8),
-					(u8)GTP_REG_CONFIG_DATA};
+					(u8)GTP_REG_CONFIG_DATA };
 	struct goodix_ts_data *ts = i2c_get_clientdata(i2c_connect_client);
 	struct goodix_config_data *cfg = &ts->pdata->config;
 
-	if (*ppos)
-		return 0;
-
-	ptr += snprintf(ptr, 50, "==== GT9XX config init value====\n");
-
-	for (i = 0 ; i < GTP_CONFIG_MAX_LENGTH ; i++) {
-		ptr += snprintf(ptr, 10, "0x%02X ", cfg->data[i + 2]);
-
-		if (i % 8 == 7)
-			ptr += snprintf(ptr, 10, "\n");
+	ptr = kzalloc(4096, GFP_KERNEL);
+	if (!ptr) {
+		dev_err(&ts->client->dev, "Failed alloc memory for config\n");
+		return -ENOMEM;
 	}
 
-	ptr += snprintf(ptr, 10, "\n");
-
-	ptr += snprintf(ptr, 50, "==== GT9XX config real value====\n");
-	gtp_i2c_read(i2c_connect_client, temp_data, GTP_CONFIG_MAX_LENGTH + 2);
+	data_len += snprintf(ptr + data_len, 4096 - data_len,
+			     "====init value====\n");
 	for (i = 0 ; i < GTP_CONFIG_MAX_LENGTH ; i++) {
-		ptr += snprintf(ptr, 10, "0x%02X ", temp_data[i+2]);
+		data_len += snprintf(ptr + data_len, 4096 - data_len,
+				     "0x%02X ", cfg->data[i + 2]);
 
 		if (i % 8 == 7)
-			ptr += snprintf(ptr, 10, "\n");
+			data_len += snprintf(ptr + data_len,
+					     4096 - data_len, "\n");
 	}
-	*ppos += ptr - page;
+	data_len += snprintf(ptr + data_len, 4096 - data_len, "\n");
 
-	return ptr - page;
+	data_len += snprintf(ptr + data_len, 4096 - data_len,
+			     "====real value====\n");
+	ret = gtp_i2c_read(i2c_connect_client, temp_data,
+			   GTP_CONFIG_MAX_LENGTH + 2);
+	if (ret < 0) {
+		data_len += snprintf(ptr + data_len, 4096 - data_len,
+				     "Failed read real config data\n");
+	} else {
+		for (i = 0 ; i < GTP_CONFIG_MAX_LENGTH ; i++) {
+			data_len += snprintf(ptr + data_len, 4096 - data_len,
+					     "0x%02X ", temp_data[i+2]);
+
+			if (i % 8 == 7)
+				data_len += snprintf(ptr + data_len,
+						     4096 - data_len, "\n");
+		}
+	}
+
+	data_len = simple_read_from_buffer(page, size, ppos, ptr, data_len);
+	kfree(ptr);
+	ptr = NULL;
+	return data_len;
 }
 
 static ssize_t gtp_config_write_proc(struct file *filp,
@@ -1282,15 +1303,17 @@ static int gtp_pinctrl_init(struct goodix_ts_data *ts)
 	}
 
 	pinctrl->default_sta = pinctrl_lookup_state(pinctrl->pinctrl,
-						    "default");
+						    "gdix_ts_int_default");
 	if (IS_ERR_OR_NULL(pinctrl->default_sta)) {
 		dev_err(&ts->client->dev,
 			"Failed get pinctrl state:default state\n");
+		dev_err(&ts->client->dev, "==== %ld\n",
+			PTR_ERR(pinctrl->default_sta));
 		goto exit_pinctrl_init;
 	}
 
 	pinctrl->int_out_high = pinctrl_lookup_state(pinctrl->pinctrl,
-						     "int-output-high");
+						     "gdix_ts_int_output_high");
 	if (IS_ERR_OR_NULL(pinctrl->int_out_high)) {
 		dev_err(&ts->client->dev,
 			"Failed get pinctrl state:output_high\n");
@@ -1298,7 +1321,7 @@ static int gtp_pinctrl_init(struct goodix_ts_data *ts)
 	}
 
 	pinctrl->int_out_low = pinctrl_lookup_state(pinctrl->pinctrl,
-						    "int-output-low");
+						    "gdix_ts_int_output_low");
 	if (IS_ERR_OR_NULL(pinctrl->int_out_low)) {
 		dev_err(&ts->client->dev,
 			"Failed get pinctrl state:output_low\n");
@@ -1306,7 +1329,7 @@ static int gtp_pinctrl_init(struct goodix_ts_data *ts)
 	}
 
 	pinctrl->int_input = pinctrl_lookup_state(pinctrl->pinctrl,
-						  "int-input");
+						  "gdix_ts_int_input");
 	if (IS_ERR_OR_NULL(pinctrl->int_input)) {
 		dev_err(&ts->client->dev,
 			"Failed get pinctrl state:int-input\n");
@@ -2392,7 +2415,7 @@ void gtp_esd_off(struct goodix_ts_data *ts)
 
 #ifdef CONFIG_OF
 static const struct of_device_id gtp_match_table[] = {
-	{.compatible = "goodix,gt928",},
+	{.compatible = "goodix,gt9xx",},
 	{ },
 };
 #endif

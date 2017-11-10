@@ -63,7 +63,7 @@ static const struct file_operations gtp_proc_ops = {
 static s32 (*tool_i2c_read)(u8 *, u16);
 static s32 (*tool_i2c_write)(u8 *, u16);
 
-s32 DATA_LENGTH = (s32)0;
+static s32 DATA_LENGTH = (s32)0;
 static s8 IC_TYPE[16] = "GT9XX";
 
 static void tool_set_proc_name(char *procname)
@@ -179,7 +179,7 @@ s32 init_wr_node(struct i2c_client *client)
 	if (i) {
 		DATA_LENGTH = i * DATA_LENGTH_UINT + GTP_ADDR_LENGTH;
 		dev_info(&gt_client->dev,
-			 "Applied memory size:%d.", DATA_LENGTH);
+			 "Alloc memory size:%d.", DATA_LENGTH);
 	} else {
 		dev_err(&gt_client->dev, "Apply for memory failed.");
 		return FAIL;
@@ -289,8 +289,8 @@ static u8 comfirm(void)
 	return SUCCESS;
 }
 
-ssize_t goodix_tool_write(struct file *filp,
-		const char __user *buff, size_t len, loff_t *off)
+ssize_t goodix_tool_write(struct file *filp, const char __user *buff,
+			  size_t len, loff_t *off)
 {
 	s32 ret = 0;
 	struct goodix_ts_data *ts = i2c_get_clientdata(gt_client);
@@ -320,13 +320,14 @@ ssize_t goodix_tool_write(struct file *filp,
 
 	if (1 == cmd_head.wr) {
 		ret = copy_from_user(&cmd_head.data[GTP_ADDR_LENGTH],
-				&buff[CMD_HEAD_LENGTH], cmd_head.data_len);
+				     &buff[CMD_HEAD_LENGTH],
+				     cmd_head.data_len);
 		if (ret) {
 			dev_err(&gt_client->dev, "copy_from_user failed.");
 			return -EPERM;
 		}
 		memcpy(&cmd_head.data[GTP_ADDR_LENGTH - cmd_head.addr_len],
-				cmd_head.addr, cmd_head.addr_len);
+		       cmd_head.addr, cmd_head.addr_len);
 
 		GTP_DEBUG_ARRAY(cmd_head.data, cmd_head.data_len +
 				cmd_head.addr_len);
@@ -335,27 +336,28 @@ ssize_t goodix_tool_write(struct file *filp,
 
 		if (1 == cmd_head.flag) {
 			if (FAIL == comfirm()) {
-				dev_err(&gt_client->dev, "[WRITE]Comfirm fail!");
+				dev_err(&gt_client->dev,
+					"[WRITE]Comfirm fail!");
 				return -EPERM;
 			}
 		} else if (2 == cmd_head.flag) {
 			/*Need interrupt!*/
 		}
 		if (tool_i2c_write(&cmd_head.data[GTP_ADDR_LENGTH -
-				cmd_head.addr_len],
-				cmd_head.data_len + cmd_head.addr_len) <= 0) {
+				   cmd_head.addr_len], cmd_head.data_len +
+				   cmd_head.addr_len) <= 0) {
 			dev_err(&gt_client->dev, "[WRITE]Write data failed!");
 			return -EPERM;
 		}
 
-		GTP_DEBUG_ARRAY(&cmd_head.data[GTP_ADDR_LENGTH
-				- cmd_head.addr_len],
+		GTP_DEBUG_ARRAY(&cmd_head.data[GTP_ADDR_LENGTH -
+				cmd_head.addr_len],
 				cmd_head.data_len + cmd_head.addr_len);
 		if (cmd_head.delay)
 			msleep(cmd_head.delay);
 	} else if (3 == cmd_head.wr) {
-		ret = copy_from_user(&cmd_head.data[0],
-			 &buff[CMD_HEAD_LENGTH], cmd_head.data_len);
+		ret = copy_from_user(&cmd_head.data[0], &buff[CMD_HEAD_LENGTH],
+				     cmd_head.data_len);
 		if (ret) {
 			dev_err(&gt_client->dev, "copy_from_user failed.");
 			return -EPERM;
@@ -376,10 +378,9 @@ ssize_t goodix_tool_write(struct file *filp,
 		if (ts->pdata->esd_protect)
 			gtp_esd_on(ts);
 	} else if (17 == cmd_head.wr) {
-		struct goodix_ts_data *ts = i2c_get_clientdata(gt_client);
-
 		ret = copy_from_user(&cmd_head.data[GTP_ADDR_LENGTH],
-				&buff[CMD_HEAD_LENGTH], cmd_head.data_len);
+				     &buff[CMD_HEAD_LENGTH],
+				     cmd_head.data_len);
 		if (ret) {
 			dev_dbg(&gt_client->dev, "copy_from_user failed.");
 			return -EPERM;
@@ -480,8 +481,8 @@ ssize_t goodix_tool_read(struct file *file, char __user *page,
 			/*memcpy(&page[loc],
 			 *&cmd_head.data[GTP_ADDR_LENGTH], len);
 			 */
-			ret = simple_read_from_buffer(&page[loc], size,
-					ppos, &cmd_head.data[GTP_ADDR_LENGTH], len);
+			ret = simple_read_from_buffer(&page[loc], size, ppos,
+					&cmd_head.data[GTP_ADDR_LENGTH], len);
 			if (ret < 0)
 				return ret;
 			loc += len;
@@ -491,8 +492,8 @@ ssize_t goodix_tool_read(struct file *file, char __user *page,
 		}
 		return cmd_head.data_len;
 	} else if (2 == cmd_head.wr) {
-		ret = simple_read_from_buffer(page, size,
-				ppos, IC_TYPE, sizeof(IC_TYPE));
+		ret = simple_read_from_buffer(page, size, ppos,
+					      IC_TYPE, sizeof(IC_TYPE));
 		return ret;
 	} else if (4 == cmd_head.wr) {
 		u8 progress_buf[4];
@@ -502,15 +503,15 @@ ssize_t goodix_tool_read(struct file *file, char __user *page,
 		progress_buf[2] = total_len >> 8;
 		progress_buf[3] = total_len & 0xff;
 
-		ret = simple_read_from_buffer(page, size,
-				ppos, progress_buf, 4);
+		ret = simple_read_from_buffer(page, size, ppos,
+					      progress_buf, 4);
 		return ret;
 	} else if (6 == cmd_head.wr) {
 		/*Read error code!*/
 	} else if (8 == cmd_head.wr) {	/*Read driver version*/
 		ret = simple_read_from_buffer(page, size, ppos,
-				GTP_DRIVER_VERSION,
-				strlen(GTP_DRIVER_VERSION));
+					      GTP_DRIVER_VERSION,
+					      strlen(GTP_DRIVER_VERSION));
 		return ret;
 	}
 
