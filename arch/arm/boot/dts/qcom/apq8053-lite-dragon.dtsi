@@ -158,10 +158,28 @@
 		"AMIC1", "MIC BIAS Internal1",
 		"AMIC2", "MIC BIAS Internal2",
 		"AMIC3", "MIC BIAS Internal1",
-                "DMIC1", "MIC BIAS Internal1",
-                "DMIC1", "Digital Mic1",
-                "DMIC2", "MIC BIAS Internal1",
-                "DMIC2", "Digital Mic2";
+		"DMIC1", "MIC BIAS Internal1",
+		"DMIC1", "Digital Mic1",
+		"DMIC2", "MIC BIAS Internal1",
+		"DMIC2", "Digital Mic2";
+
+	qcom,msm-gpios =
+		"pri_i2s",
+		"quat_i2s";
+	qcom,pinctrl-names =
+		"all_off",
+		"pri_i2s_act",
+		"quat_i2s_act",
+		"dmic_quat_act";
+	pinctrl-names =
+		"all_off",
+		"pri_i2s_act",
+		"quat_i2s_act",
+		"dmic_quat_act";
+	pinctrl-0 = <&sec_tlmm_lines_sus &cdc_dmic0_clk_sus &cdc_dmic0_data_sus>;
+	pinctrl-1 = <&sec_tlmm_lines_sus &cdc_dmic0_clk_act &cdc_dmic0_data_act>;
+	pinctrl-2 = <&sec_tlmm_lines_act &cdc_dmic0_clk_sus &cdc_dmic0_data_sus>;
+	pinctrl-3 = <&sec_tlmm_lines_act &cdc_dmic0_clk_act &cdc_dmic0_data_act>;
 
 	/delete-property/ asoc-wsa-codec-names;
 	/delete-property/ asoc-wsa-codec-prefixes;
