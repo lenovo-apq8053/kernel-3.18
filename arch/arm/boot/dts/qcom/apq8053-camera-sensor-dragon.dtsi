@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015-2016, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2015-2017, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -46,12 +46,12 @@
 		/*qcom,led-flash-src = <&led_flash0>;*/
 		qcom,actuator-src = <&actuator0>;
 		cam_vio-supply = <&pm8953_l6>;
-		cam_vdig-supply = <&eldo_cam0_vreg>;
+		cam_vdig-supply = <&pm8953_l2>;
 		cam_vana-supply = <&pm8953_l17>;
 		qcom,cam-vreg-name = "cam_vio", "cam_vdig",
 						"cam_vana";
-		qcom,cam-vreg-min-voltage = <1800000 1100000 2850000>;
-		qcom,cam-vreg-max-voltage = <1800000 1100000 2850000>;
+		qcom,cam-vreg-min-voltage = <1800000 1200000 2850000>;
+		qcom,cam-vreg-max-voltage = <1800000 1200000 2850000>;
 		qcom,cam-vreg-op-mode = <105000 0 100000>;
 		pinctrl-names = "cam_default", "cam_suspend";
 		pinctrl-0 = <&cam_sensor_mclk0_default
@@ -88,12 +88,12 @@
 		qcom,mount-angle = <0>;
 		qcom,actuator-src = <&actuator0>;
 		cam_vio-supply = <&pm8953_l6>;
-		cam_vdig-supply = <&eldo_cam1_vreg>;
+		cam_vdig-supply = <&pm8953_l2>;
 		cam_vana-supply = <&pm8953_l17>;
 		qcom,cam-vreg-name = "cam_vio", "cam_vdig",
 						"cam_vana";
-		qcom,cam-vreg-min-voltage = <1800000 1100000 2850000>;
-		qcom,cam-vreg-max-voltage = <1800000 1100000 2850000>;
+		qcom,cam-vreg-min-voltage = <1800000 1200000 2850000>;
+		qcom,cam-vreg-max-voltage = <1800000 1200000 2850000>;
 		qcom,cam-vreg-op-mode = <105000 0 100000>;
 		pinctrl-names = "cam_default", "cam_suspend";
 		pinctrl-0 = <&cam_sensor_mclk1_default
@@ -129,12 +129,12 @@
 		qcom,mount-angle = <0>;
 		qcom,actuator-src = <&actuator0>;
 		cam_vio-supply = <&pm8953_l6>;
-		cam_vdig-supply = <&eldo_cam2_vreg>;
+		cam_vdig-supply = <&pm8953_l2>;
 		cam_vana-supply = <&pm8953_l17>;
 		qcom,cam-vreg-name = "cam_vio", "cam_vdig",
 						"cam_vana";
-		qcom,cam-vreg-min-voltage = <1800000 1100000 2850000>;
-		qcom,cam-vreg-max-voltage = <1800000 1100000 2850000>;
+		qcom,cam-vreg-min-voltage = <1800000 1200000 2850000>;
+		qcom,cam-vreg-max-voltage = <1800000 1200000 2850000>;
 		qcom,cam-vreg-op-mode = <105000 0 100000>;
 		/*qcom,gpio-no-mux = <0>;*/
 		pinctrl-names = "cam_default", "cam_suspend";
