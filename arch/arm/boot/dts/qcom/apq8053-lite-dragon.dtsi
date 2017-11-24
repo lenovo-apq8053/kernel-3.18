@@ -212,6 +212,10 @@
 	status = "disabled";
 };
 
+&i2c_1 {
+       status = "okay";
+};
+
 &i2c_2 {
 	status = "disabled";
 };
