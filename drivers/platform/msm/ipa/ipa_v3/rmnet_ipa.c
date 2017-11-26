@@ -1327,8 +1327,13 @@ static int handle3_egress_format(struct net_device *dev,
 
 	if (rmnet_ipa3_ctx->num_q6_rules != 0) {
 		/* already got Q6 UL filter rules*/
-		if (ipa3_qmi_ctx->modem_cfg_emb_pipe_flt == false)
+		if (ipa3_qmi_ctx->modem_cfg_emb_pipe_flt == false){
+                        /* prevent multi-threads accessing num_q6_rules */
+			mutex_lock(&rmnet_ipa3_ctx->add_mux_channel_lock);
 			rc = ipa3_wwan_add_ul_flt_rule_to_ipa();
+			mutex_unlock(&rmnet_ipa3_ctx->
+					add_mux_channel_lock);
+		}
 		if (rc)
 			IPAWANERR("install UL rules failed\n");
 		else
