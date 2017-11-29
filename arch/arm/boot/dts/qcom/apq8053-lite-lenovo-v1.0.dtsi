@@ -46,6 +46,8 @@
 
 	vdd-supply = <&pm8953_l10>;
 	vddio-supply = <&pm8953_l6>;
+	lab-supply = <&lab_regulator>;
+	ibb-supply = <&ibb_regulator>;
 
 	qcom,platform-te-gpio = <&tlmm 24 0>;
 	qcom,platform-reset-gpio = <&tlmm 61 0>;
