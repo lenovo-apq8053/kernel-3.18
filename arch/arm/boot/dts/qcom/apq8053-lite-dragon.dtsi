@@ -217,7 +217,7 @@
 };
 
 &i2c_2 {
-	status = "disabled";
+	status = "okay";
 };
 
 &i2c_3 {
