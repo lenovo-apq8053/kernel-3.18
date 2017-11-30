@@ -14,9 +14,9 @@
 #include "apq8053-lite-dragon.dtsi"
 
 &i2c_3 {
-        status = "okay";
-	/delete-node/ himax_ts@48;
-        gt9xx-i2c@14 {
+	status = "okay";
+	/delete-node/ focaltech@38;
+	gt9xx-i2c@14 {
 		compatible = "goodix,gt9xx";
 		reg = <0x14>;
 		status = "okay";
@@ -83,10 +83,39 @@
 			17 16 15 14 13 12 11 10 0F 0E 0D 0C 0B 0A 09 08
 			07 06 05 04 03 02 01 00 F9 01
 		];
-        };
+	};
 };
 
+&mdss_dsi {
+	hw-config = "single_dsi";
+};
 
 &mdss_dsi0 {
 	qcom,dsi-pref-prim-pan = <&dsi_boent51021_1200p_video>;
+	pinctrl-names = "mdss_default", "mdss_sleep";
+	pinctrl-0 = <&mdss_dsi_active &mdss_te_active>;
+	pinctrl-1 = <&mdss_dsi_suspend &mdss_te_suspend>;
+
+	vdd-supply = <&pm8953_l10>;
+	vddio-supply = <&pm8953_l6>;
+	lab-supply = <&lab_regulator>;
+	ibb-supply = <&ibb_regulator>;
+
+	qcom,platform-te-gpio = <&tlmm 24 0>;
+	qcom,platform-reset-gpio = <&tlmm 61 0>;
+	qcom,platform-bklight-en-gpio = <&tlmm 100 0>;
+};
+
+&mdss_dsi1 {
+	status = "disabled";
+};
+
+&labibb {
+	status = "ok";
+	qpnp,qpnp-labibb-mode = "lcd";
+};
+
+&wled {
+	qcom,cons-sync-write-delay-us = <1000>;
+	qcom,led-strings-list = [00 01 02 03];
 };
