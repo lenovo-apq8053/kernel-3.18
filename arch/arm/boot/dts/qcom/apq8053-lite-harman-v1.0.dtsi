@@ -101,6 +101,7 @@
 		focaltech,max-touch-number = <5>;
 		report_type             = <1>;
 	};
+	/delete-node/ focaltech@38;
  };
 
 &mdss_dsi {
