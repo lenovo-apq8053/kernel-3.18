@@ -88,8 +88,8 @@
 		//qcom,mdss-dsi-bl-pmic-pwm-frequency = <100>;
 		//qcom,mdss-dsi-bl-pmic-bank-select = <0>;
 		//qcom,mdss-dsi-pwm-gpio = <&pm8953_mpps 4 0>;
-		qcom,mdss-pan-physical-width-dimension = <108>;
-		qcom,mdss-pan-physical-height-dimension = <172>;
+		qcom,mdss-pan-physical-width-dimension = <135>;
+		qcom,mdss-pan-physical-height-dimension = <216>;
 		//qcom,mdss-dsi-reset-sequence = <1 10>, <0 5>, <1 50>;
 		qcom,mdss-dsi-lp11-init;
 		qcom,mdss-dsi-post-init-delay = <1>;
