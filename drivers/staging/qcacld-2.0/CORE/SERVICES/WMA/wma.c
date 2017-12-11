@@ -4104,9 +4104,14 @@ static int wma_extscan_operations_event_handler(void *handle,
 		return -EINVAL;
 	}
 	event = param_buf->fixed_param;
+	if (event->num_buckets > param_buf->num_bucket_id) {
+		WMA_LOGE("FW mesg num_buk %d more than TLV hdr %d",
+			event->num_buckets,
+			param_buf->num_bucket_id);
+		return -EINVAL;
+	}
 	buf_len = sizeof(*buf);
 	buf = vos_mem_malloc(buf_len);
-
 	if (!buf) {
 		WMA_LOGE("%s: extscan memory allocation failed", __func__);
 		return -ENOMEM;
@@ -5312,8 +5317,23 @@ static int wma_unified_link_radio_stats_event_handler(void *handle,
 		return -EINVAL;
 	}
 
+	if (radio_stats->num_channels >
+	    NUM_2_4GHZ_CHANNELS + NUM_5GHZ_CHANNELS) {
+		WMA_LOGE("%s: Too many channels %d",
+			 __func__, radio_stats->num_channels);
+		return -EINVAL;
+	}
+
 	radio_stats_size = sizeof(tSirWifiRadioStat);
 	chan_stats_size  = sizeof(tSirWifiChannelStats);
+
+	if (fixed_param->num_radio >
+	    (UINT_MAX - sizeof(*link_stats_results)) / radio_stats_size) {
+		WMA_LOGE("excess num_radio %d is leading to int overflow",
+			 fixed_param->num_radio);
+		return -EINVAL;
+	}
+
 	link_stats_results_size = sizeof(*link_stats_results) +
 			radio_stats_size +
 			(radio_stats->num_channels * chan_stats_size);
@@ -6795,6 +6815,12 @@ static void wma_send_bcn_buf_ll(tp_wma_handle wma,
 		WMA_LOGE("%s: Invalid beacon buffer", __func__);
 		return;
 	}
+	if (WMI_UNIFIED_NOA_ATTR_NUM_DESC_GET(p2p_noa_info) >
+			WMI_P2P_MAX_NOA_DESCRIPTORS) {
+		WMA_LOGE("%s: Too many descriptors %d", __func__,
+			 WMI_UNIFIED_NOA_ATTR_NUM_DESC_GET(p2p_noa_info));
+		return;
+	}
 
 	wmi_buf = wmi_buf_alloc(wma->wmi_handle, sizeof(*cmd));
 	if (!wmi_buf) {
@@ -7454,6 +7480,12 @@ static int wma_p2p_noa_event_handler(void *handle, u_int8_t *event, u_int32_t le
 		noa_ie.ctwindow = (u_int8_t)WMI_UNIFIED_NOA_ATTR_CTWIN_GET(p2p_noa_info);
 		descriptors = WMI_UNIFIED_NOA_ATTR_NUM_DESC_GET(p2p_noa_info);
 		noa_ie.num_descriptors = (u_int8_t)descriptors;
+
+		if (noa_ie.num_descriptors > WMA_MAX_NOA_DESCRIPTORS) {
+			WMA_LOGD("Sizing down the no of desc %d to max",
+					noa_ie.num_descriptors);
+			noa_ie.num_descriptors = WMA_MAX_NOA_DESCRIPTORS;
+		}
 
 		WMA_LOGI("%s: index %u, oppPs %u, ctwindow %u, "
 				"num_descriptors = %u", __func__, noa_ie.index,
@@ -34827,6 +34859,11 @@ static int wma_nlo_match_evt_handler(void *handle, u_int8_t *event,
 	nlo_event = param_buf->fixed_param;
 	WMA_LOGD("PNO match event received for vdev %d",
 		 nlo_event->vdev_id);
+	if (nlo_event->vdev_id >= wma->max_bssid) {
+		WMA_LOGE("Invalid vdev id in the NLO event %d",
+				nlo_event->vdev_id);
+		return -EINVAL;
+	}
 
 	node = &wma->interfaces[nlo_event->vdev_id];
 	if (node)
@@ -38179,6 +38216,11 @@ wma_process_utf_event(WMA_HANDLE handle,
 	data = param_buf->data;
 	datalen = param_buf->num_data;
 
+	if (datalen < sizeof(segHdrInfo)) {
+		WMA_LOGE("message size %d is smaller than struct seg_hdr_info",
+			 datalen);
+		return -EINVAL;
+	}
 
 	segHdrInfo = *(SEG_HDR_INFO_STRUCT *)&(data[0]);
 
@@ -38198,6 +38240,14 @@ wma_process_utf_event(WMA_HANDLE handle,
 				 " Seq %d got seq %d",
 				 wma_handle->utf_event_info.expectedSeq,
 				 currentSeq);
+	}
+
+	if ((datalen > MAX_UTF_EVENT_LENGTH) ||
+		(wma_handle->utf_event_info.offset >
+		(MAX_UTF_EVENT_LENGTH - datalen))) {
+		WMA_LOGE("Excess data from firmware, offset:%zu, len:%d",
+			wma_handle->utf_event_info.offset, datalen);
+		return -EINVAL;
 	}
 
 	memcpy(&wma_handle->utf_event_info.data[wma_handle->utf_event_info.offset],
