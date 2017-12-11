@@ -1498,6 +1498,12 @@ static int msm_quat_mi2s_snd_startup(struct snd_pcm_substream *substream)
 		pr_err("failed to enable codec gpios\n");
 		goto err;
 	}
+	ret = msm8952_enable_wsa_mclk(card, true);
+	if (ret < 0) {
+		pr_err("%s: failed to enable mclk for wsa %d\n",
+			__func__, ret);
+		goto err;
+	}
 	if (atomic_inc_return(&quat_mi2s_clk_ref) == 1) {
 		ret = snd_soc_dai_set_fmt(cpu_dai, SND_SOC_DAIFMT_CBS_CFS);
 		if (ret < 0)
@@ -1514,6 +1520,8 @@ err:
 static void msm_quat_mi2s_snd_shutdown(struct snd_pcm_substream *substream)
 {
 	int ret;
+	struct snd_soc_pcm_runtime *rtd = substream->private_data;
+	struct snd_soc_card *card = rtd->card;
 
 	pr_debug("%s(): substream = %s  stream = %d\n", __func__,
 				substream->name, substream->stream);
@@ -1523,6 +1531,12 @@ static void msm_quat_mi2s_snd_shutdown(struct snd_pcm_substream *substream)
 	if (atomic_read(&quat_mi2s_clk_ref) > 0)
 		atomic_dec(&quat_mi2s_clk_ref);
 	ret = msm_gpioset_suspend(CLIENT_WCD_INT, "quat_i2s");
+	ret = msm8952_enable_wsa_mclk(card, false);
+	if (ret < 0) {
+		pr_err("%s: failed to disable mclk for wsa %d\n",
+			__func__, ret);
+		return;
+	}
 	if (ret < 0) {
 		pr_err("%s: gpio set cannot be de-activated %sd",
 					__func__, "quat_i2s");
@@ -3309,10 +3323,8 @@ parse_mclk_freq:
 	INIT_DELAYED_WORK(&pdata->disable_mclk_work, msm8952_disable_mclk);
 	mutex_init(&pdata->cdc_mclk_mutex);
 	atomic_set(&pdata->mclk_rsc_ref, 0);
-	if (card->aux_dev) {
-		mutex_init(&pdata->wsa_mclk_mutex);
-		atomic_set(&pdata->wsa_mclk_rsc_ref, 0);
-	}
+	mutex_init(&pdata->wsa_mclk_mutex);
+	atomic_set(&pdata->wsa_mclk_rsc_ref, 0);
 	atomic_set(&pdata->mclk_enabled, false);
 	atomic_set(&quat_mi2s_clk_ref, 0);
 	atomic_set(&quin_mi2s_clk_ref, 0);
