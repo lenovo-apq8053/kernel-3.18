@@ -2717,7 +2717,11 @@ void mmc_power_up(struct mmc_host *host, u32 ocr)
 	 * This delay should be sufficient to allow the power supply
 	 * to reach the minimum voltage.
 	 */
-	mmc_delay(10);
+	if(!strcmp(mmc_hostname(host), "mmc1")) {
+		mmc_delay(150);
+	} else {
+		mmc_delay(10);
+	}
 
 	host->ios.clock = host->f_init;
 
