@@ -772,6 +772,7 @@
 		pinctrl-1 = <&i2c_1_sleep>;
 		qcom,noise-rjct-scl = <0>;
 		qcom,noise-rjct-sda = <0>;
+		status = "disabled";
 	};
 
         i2c_2: i2c@78b6000 { /* BLSP1 QUP2 */
