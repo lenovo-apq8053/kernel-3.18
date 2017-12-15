@@ -263,7 +263,7 @@
 
 
 &i2c_5 {
-	status = "okay";
+	status = "disabled";
 };
 
 #include "msm8953-mdss-panels.dtsi"
