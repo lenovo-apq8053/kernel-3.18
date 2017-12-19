@@ -81,6 +81,11 @@
 	regulator-always-on;
 };
 
+&pm8953_l22 {
+	status = "okay";
+	regulator-always-on;
+};
+
 &i2c_3 {
 	status = "okay";
 	focaltech_ts@38 {
