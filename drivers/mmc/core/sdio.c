@@ -750,7 +750,16 @@ try_again:
 	if (!powered_resume && (rocr & ocr & R4_18V_PRESENT)) {
 		err = mmc_set_signal_voltage(host, MMC_SIGNAL_VOLTAGE_180,
 					ocr);
-		if (err == -EAGAIN) {
+		if (err == -EAGAIN || err == -ETIMEDOUT) {
+			/*
+			 * SDIO Client might not got reset properly
+			 * Hard-reset it and retry
+			 */
+			if (err == -ETIMEDOUT) {
+				mmc_power_off(host);
+				mmc_delay(10);
+				mmc_power_up(host, host->ocr_avail);
+			}
 			sdio_reset(host);
 			mmc_go_idle(host);
 			mmc_send_if_cond(host, host->ocr_avail);
