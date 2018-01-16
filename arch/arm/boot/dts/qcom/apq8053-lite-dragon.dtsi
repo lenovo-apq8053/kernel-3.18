@@ -160,10 +160,10 @@
 		"pri_i2s_act",
 		"quat_i2s_act",
 		"dmic_quat_act";
-	pinctrl-0 = <&sec_tlmm_lines_sus &cdc_dmic0_clk_sus &cdc_dmic0_data_sus &wsa_clk_off>;
-	pinctrl-1 = <&sec_tlmm_lines_sus &cdc_dmic0_clk_act &cdc_dmic0_data_act &wsa_clk_off>;
-	pinctrl-2 = <&sec_tlmm_lines_act &cdc_dmic0_clk_sus &cdc_dmic0_data_sus &wsa_clk_on>;
-	pinctrl-3 = <&sec_tlmm_lines_act &cdc_dmic0_clk_act &cdc_dmic0_data_act &wsa_clk_on>;
+	pinctrl-0 = <&sec_tlmm_lines_sus &cdc_dmic0_clk_sus &cdc_dmic0_data_sus>;
+	pinctrl-1 = <&sec_tlmm_lines_sus &cdc_dmic0_clk_act &cdc_dmic0_data_act>;
+	pinctrl-2 = <&sec_tlmm_lines_act &cdc_dmic0_clk_sus &cdc_dmic0_data_sus>;
+	pinctrl-3 = <&sec_tlmm_lines_act &cdc_dmic0_clk_act &cdc_dmic0_data_act>;
 
 	/delete-property/ asoc-wsa-codec-names;
 	/delete-property/ asoc-wsa-codec-prefixes;
