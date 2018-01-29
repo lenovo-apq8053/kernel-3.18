@@ -10,10 +10,10 @@ config TOUCHSCREEN_GT9XX_v28
 
           If unsure, say N.
 
-config TOUCHSCREEN_GT9XX_UPDATE_v28
+config TOUCHSCREEN_GT9XX_UPDATE
 	tristate "Goodix GT9xx touch controller auto update support"
 	depends on TOUCHSCREEN_GT9XX_v28
-	default n
+	default y
 	help
 	  Enable this for support firmware update.
 
@@ -21,10 +21,10 @@ config TOUCHSCREEN_GT9XX_UPDATE_v28
 
 	  If unsure, say N.
 
-config TOUCHSCREEN_GT9XX_DEBUG_v28
+config TOUCHSCREEN_GT9XX_TOOL
 	tristate "Goodix GT9xx Tools for debuging"
 	depends on TOUCHSCREEN_GT9XX_v28
-	default n
+	default y
 	help
 	  This implement interface support for Goodix GT9xx
 	  touchscreen debug.
