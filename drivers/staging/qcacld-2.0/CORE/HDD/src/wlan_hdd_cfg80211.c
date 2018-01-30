@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2017 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2012-2018 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -19562,6 +19562,13 @@ static int __wlan_hdd_cfg80211_add_key( struct wiphy *wiphy,
     status = wlan_hdd_validate_context(pHddCtx);
     if (0 != status)
         return status;
+
+    if (pHddCtx->isUnloadInProgress ||
+        pHddCtx->isLogpInProgress) {
+        VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                  "%s: Unloading or SSR in Progress, Ignore!!!", __func__);
+            return 0;
+    }
 
     if (VOS_FTM_MODE == hdd_get_conparam()) {
         hddLog(LOGE, FL("Command not allowed in FTM mode"));
