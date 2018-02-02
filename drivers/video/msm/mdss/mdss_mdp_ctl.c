@@ -5693,10 +5693,12 @@ int mdss_mdp_display_commit(struct mdss_mdp_ctl *ctl, void *arg,
 	if (ctl->play_cnt == 5) {
 		struct msm_fb_data_type *mfd = ctl->mfd;
 
-		MDSS_BRIGHT_TO_BL(mfd->bl_level, MDSS_MAX_BL_BRIGHTNESS / 2,
-				  mfd->panel_info->bl_max,
-				  mfd->panel_info->brightness_max);
-		mdss_fb_set_backlight(mfd, mfd->bl_level);
+		if (mfd) {
+			MDSS_BRIGHT_TO_BL(mfd->bl_level, MDSS_MAX_BL_BRIGHTNESS / 2,
+					  mfd->panel_info->bl_max,
+					  mfd->panel_info->brightness_max);
+			mdss_fb_set_backlight(mfd, mfd->bl_level);
+		}
 	}
 
 	ATRACE_END("flush_kickoff");
