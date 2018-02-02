@@ -21,14 +21,19 @@
 		reg = <0x14>;
 		status = "okay";
 		vdd_ana-supply = <&pm8953_l10>;
-		vcc_i2c-supply = <&pm8953_l5>;
+		vcc_i2c-supply = <&pm8953_l6>;
 		interrupt-parent = <&tlmm>;
 		interrupts = <65 0x2008>;
-		pinctrl-names = "gdix_ts_int_default", "gdix_ts_int_output_low", "gdix_ts_int_output_high", "gdix_ts_int_input";
+		pinctrl-names = "gdix_ts_int_default", "gdix_ts_int_output_low", "gdix_ts_int_output_high", "gdix_ts_int_input",
+						"gdix_ts_rst_default", "gdix_ts_rst_output_low", "gdix_ts_rst_output_high", "gdix_ts_rst_input";
 		pinctrl-0 = <&ts_int_default>;
 		pinctrl-1 = <&ts_int_output_low>;
 		pinctrl-2 = <&ts_int_output_high>;
 		pinctrl-3 = <&ts_int_input>;
+		pinctrl-4 = <&ts_rst_default>;
+		pinctrl-5 = <&ts_rst_output_low>;
+		pinctrl-6 = <&ts_rst_output_high>;
+		pinctrl-7 = <&ts_rst_input>;
 
 		reset-gpios = <&tlmm 64 0x00>;
 		irq-gpios = <&tlmm 65 0x2008>;
@@ -39,49 +44,48 @@
 		touchscreen-size-y = <1920>;
 		touchscreen-max-w = <1024>;
 		touchscreen-max-p = <1024>;
-		/*touchscreen-key-map = <172>, <158>;*/ /*KEY_HOMEPAGE, KEY_BACK*/
+		/*touchscreen-key-map = <172>, <158>;*/ /*KEY_HOMEPAGE=172, KEY_BACK=158，KEY_MENU=139*/
 
 		goodix,type-a-report = <0>;
 		goodix,driver-send-cfg = <1>;
-		goodix,create-wr-node = <1>;
 		goodix,wakeup-with-reset = <0>;
 		goodix,resume-in-workqueue = <0>;
 		goodix,int-sync = <1>;
 		goodix,swap-x2y = <0>;
 		goodix,esd-protect = <1>;
 		goodix,pen-suppress-finger = <0>;
-		goodix,auto-update = <0>;
+		goodix,auto-update = <1>;
 		goodix,auto-update-cfg = <0>;
 		goodix,power-off-sleep = <0>;
 
 		goodix,cfg-group0 = [
-			57 B0 04 80 07 0A F4 10 11 C8 3C 0D 55 41 3A 14
-			00 00 09 AA 22 22 00 17 19 1C 14 95 35 FF 33 35
-			36 11 3A 00 00 20 43 1C 18 16 1E 80 83 12 64 64
-			28 4A 0A 28 5A 94 C5 F3 23 28 10 04 BE 2B 00 B3
-			33 AC AD 3C 00 AC 46 00 AB 53 0C AB 00 10 33 28
-			24 01 00 00 00 00 00 00 23 0F A6 52 43 25 0F 00
-			00 04 00 00 00 88 A5 99 1E 02 00 1E 40 00 32 1E
+			5A B0 04 80 07 0A 35 10 22 08 32 0D 50 3C 0A 04
+			01 01 00 B4 11 11 44 15 19 1B 14 95 35 FF 3A 3C
+			39 13 00 00 00 98 03 1C 00 00 00 00 03 00 00 00
+			00 80 0A 37 46 40 E5 52 23 28 00 04 81 38 00 7F
+			3B 00 7D 3E 00 7C 41 00 7A 44 0C 7A 00 50 33 50
+			0B 01 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+			00 00 00 00 00 00 00 55 00 01 00 00 02 00 00 00
 			1D 1C 1B 1A 19 18 17 16 15 14 13 12 11 10 0F 0E
 			0D 0C 0B 0A 09 08 07 06 05 04 03 02 01 00 2A 29
 			28 27 26 25 24 23 22 21 20 1F 1E 1D 1C 1B 19 18
 			17 16 15 14 13 12 11 10 0F 0E 0D 0C 0B 0A 09 08
-			07 06 05 04 03 02 01 00 0C 01
+			07 06 05 04 03 02 01 00 08 01
 		];
 
 		goodix,cfg-group2 = [
-			57 B0 04 80 07 0A F4 10 11 C8 3C 0D 55 41 3A 14
-			00 00 09 AA 22 22 00 17 19 1C 14 95 35 FF 33 35
-			36 11 3A 00 00 20 43 1C 18 16 1E 80 83 12 64 64
-			28 4A 0A 28 5A 94 C5 F3 23 28 10 04 98 2B 00 8C
-			33 AC 85 3C 00 84 46 00 83 53 0C 83 00 10 33 28
-			24 01 00 00 00 00 00 00 23 0F A6 52 43 25 0F 00
-			00 04 00 00 00 88 A5 99 1E 02 00 1E 40 00 32 1E
+			5A B0 04 80 07 0A 35 10 22 08 32 0D 50 3C 0A 04
+			01 01 00 B4 11 11 44 15 19 1B 14 95 35 FF 3A 3C
+			39 13 00 00 00 98 03 1C 00 00 00 00 03 00 00 00
+			00 80 0A 37 46 40 E5 52 23 28 00 04 81 38 00 7F
+			3B 00 7D 3E 00 7B 41 00 7A 44 0C 7A 00 50 33 50
+			0B 01 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+			00 00 00 00 00 00 00 55 00 01 00 00 02 00 00 00
 			1D 1C 1B 1A 19 18 17 16 15 14 13 12 11 10 0F 0E
 			0D 0C 0B 0A 09 08 07 06 05 04 03 02 01 00 2A 29
 			28 27 26 25 24 23 22 21 20 1F 1E 1D 1C 1B 19 18
 			17 16 15 14 13 12 11 10 0F 0E 0D 0C 0B 0A 09 08
-			07 06 05 04 03 02 01 00 F9 01
+			07 06 05 04 03 02 01 00 09 01
 		];
 	};
 };
