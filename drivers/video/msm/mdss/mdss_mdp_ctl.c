@@ -1,4 +1,4 @@
-/* Copyright (c) 2012-2017, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2012-2018, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -5690,7 +5690,7 @@ int mdss_mdp_display_commit(struct mdss_mdp_ctl *ctl, void *arg,
 
 	ctl->play_cnt++;
 
-	if (ctl->play_cnt == 5) {
+	if ((ctl->intf_type == MDSS_INTF_DSI) && (ctl->play_cnt == 5)) {
 		struct msm_fb_data_type *mfd = ctl->mfd;
 
 		if (mfd) {
