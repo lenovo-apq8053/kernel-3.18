@@ -43,6 +43,14 @@ config QPNP_POWER_ON
 	  PNP PMIC. It currently supports reporting the change in status of
 	  the KPDPWR_N line (connected to the power-key).
 
+config QPNP_POWER_ON_GPIO
+	tristate "QPNP PMIC POWER-ON Driver w/GPIO subsystem"
+	depends on QPNP_POWER_ON
+	select IRQ_SIM
+	default n
+	help
+	  Registers GPIO chip associated with the RESIN interrupt.
+
 config QPNP_REVID
 	tristate "QPNP Revision ID Peripheral"
 	depends on SPMI || MSM_SPMI

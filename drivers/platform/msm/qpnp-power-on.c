@@ -30,6 +30,11 @@
 #include <linux/regulator/of_regulator.h>
 #include <linux/qpnp/power-on.h>
 
+#ifdef CONFIG_QPNP_POWER_ON_GPIO
+#include <linux/gpio.h>
+#include <linux/irq_sim.h>
+#endif // CONFIG_QPNP_POWER_ON_GPIO
+
 #define CREATE_MASK(NUM_BITS, POS) \
 	((unsigned char) (((1 << (NUM_BITS)) - 1) << (POS)))
 #define PON_MASK(MSB_BIT, LSB_BIT) \
@@ -228,8 +233,21 @@ struct qpnp_pon {
 	ktime_t			kpdpwr_last_release_time;
 };
 
+#ifdef CONFIG_QPNP_POWER_ON_GPIO
+struct qpnp_gpiochip_pon {
+	struct gpio_chip	gc;
+	struct qpnp_pon	       *pon;
+	struct irq_sim		irqsim;
+	unsigned int		irq_offset;
+};
+
+static struct qpnp_gpiochip_pon *sys_gpiochip_dev = NULL;
+static unsigned int sys_gpiochip_base = 0;
+#endif // CONFIG_QPNP_POWER_ON_GPIO
+
 static struct qpnp_pon *sys_reset_dev;
 static DEFINE_SPINLOCK(spon_list_slock);
+static DEFINE_SPINLOCK(gpiochip_slock);
 static LIST_HEAD(spon_dev_list);
 
 static u32 s1_delay[PON_S1_COUNT_MAX + 1] = {
@@ -790,6 +808,27 @@ qpnp_get_cfg(struct qpnp_pon *pon, u32 pon_type)
 }
 
 static int
+qpnp_pon_get_resin_status(struct qpnp_pon *pon, bool *status)
+{
+	int rc;
+	u8 pon_rt_sts;
+	unsigned long flags;
+
+	/* check the RT status to get the current status of the line */
+	spin_lock_irqsave(&gpiochip_slock, flags);
+	rc = spmi_ext_register_readl(pon->spmi->ctrl, pon->spmi->sid,
+				QPNP_PON_RT_STS(pon), &pon_rt_sts, 1);
+	spin_unlock_irqrestore(&gpiochip_slock, flags);
+	if (rc) {
+		dev_err(&pon->spmi->dev, "Unable to read PON RT status\n");
+		return rc;
+	}
+
+	*status = (pon_rt_sts & QPNP_PON_RESIN_N_SET) > 0;
+	return 0;
+}
+
+static int
 qpnp_pon_input_dispatch(struct qpnp_pon *pon, u32 pon_type)
 {
 	int rc;
@@ -889,6 +928,12 @@ static irqreturn_t qpnp_resin_irq(int irq, void *_pon)
 {
 	int rc;
 	struct qpnp_pon *pon = _pon;
+
+#ifdef CONFIG_QPNP_POWER_ON_GPIO
+	if (sys_gpiochip_dev) { /* fire interrupt handler to notify */
+		irq_sim_fire(&sys_gpiochip_dev->irqsim, sys_gpiochip_dev->irq_offset);
+	}
+#endif // CONFIG_QPNP_POWER_ON_GPIO
 
 	rc = qpnp_pon_input_dispatch(pon, PON_RESIN);
 	if (rc)
@@ -1984,6 +2029,52 @@ static int read_gen2_pon_off_reason(struct qpnp_pon *pon, u16 *reason,
 	return 0;
 }
 
+#ifdef CONFIG_QPNP_POWER_ON_GPIO
+static int qpnp_gpiochip_pon_direction_input(struct gpio_chip *gc,
+					     unsigned offset)
+{
+	return 0;
+}
+
+static int qpnp_gpiochip_pon_direction_output(struct gpio_chip *gc,
+					      unsigned offset, int val)
+{
+	return -EINVAL;
+}
+
+static int qpnp_gpiochip_pon_get_value(struct gpio_chip *gc,
+				       unsigned offset)
+{
+	bool gpio_value = false;
+	/* report the state of the interrupt register */
+	if (sys_gpiochip_dev && sys_gpiochip_dev->pon) {
+		qpnp_pon_get_resin_status(sys_gpiochip_dev->pon, &gpio_value);
+	}
+	return gpio_value;
+}
+
+static void qpnp_gpiochip_pon_set_value(struct gpio_chip *gc,
+					unsigned offset,
+					int val)
+{
+	return; /* not configurable for output, no-op */
+}
+
+static int qpnp_gpiochip_pon_to_irq(struct gpio_chip *gc,
+				    unsigned offset)
+{
+	unsigned long flags;
+	if (!sys_gpiochip_dev) {
+		return -EINVAL;
+	}
+	/* save the offset */
+	spin_lock_irqsave(&gpiochip_slock, flags);
+	sys_gpiochip_dev->irq_offset = offset;
+	spin_unlock_irqrestore(&gpiochip_slock, flags);
+	return irq_sim_irqnum(&sys_gpiochip_dev->irqsim, offset);
+}
+#endif // CONFIG_QPNP_POWER_ON_GPIO
+
 static int qpnp_pon_probe(struct spmi_device *spmi)
 {
 	struct qpnp_pon *pon;
@@ -2351,6 +2442,59 @@ static int qpnp_pon_probe(struct spmi_device *spmi)
 					"qcom,store-hard-reset-reason");
 
 	qpnp_pon_debugfs_init(spmi);
+
+#ifdef CONFIG_QPNP_POWER_ON_GPIO
+	rc = of_property_read_u32(pon->spmi->dev.of_node,
+				"qcom,resin-gpiobase", &sys_gpiochip_base);
+	if (rc) {
+		// Not a failure, it is not required to specify this parameter.
+		dev_dbg(&spmi->dev, "qcom,resin-gpiobase not specified");
+	} else if (!sys_gpiochip_dev) { /* register gpiochip if not already done once */
+		sys_gpiochip_dev = devm_kzalloc(&spmi->dev,
+						sizeof(struct qpnp_gpiochip_pon),
+						GFP_KERNEL);
+		if (!sys_gpiochip_dev) {
+			dev_err(&spmi->dev, "Failed to allocate qpnp_gpiochip_pon.");
+			return -EINVAL;
+		}
+
+		/* set reasonable defaults for gpio state and irq offset */
+		sys_gpiochip_dev->irq_offset = 0;
+		sys_gpiochip_dev->pon = pon;
+
+		/* populate gpiochip parameters */
+		sys_gpiochip_dev->gc.base = sys_gpiochip_base;
+		sys_gpiochip_dev->gc.ngpio = 1;
+		sys_gpiochip_dev->gc.label = "qpnp-gpiochip-pon";
+		sys_gpiochip_dev->gc.direction_input = qpnp_gpiochip_pon_direction_input;
+		sys_gpiochip_dev->gc.direction_output = qpnp_gpiochip_pon_direction_output;
+		sys_gpiochip_dev->gc.get = qpnp_gpiochip_pon_get_value;
+		sys_gpiochip_dev->gc.set = qpnp_gpiochip_pon_set_value;
+		sys_gpiochip_dev->gc.to_irq = qpnp_gpiochip_pon_to_irq;
+		sys_gpiochip_dev->gc.can_sleep = 0;
+		sys_gpiochip_dev->gc.dev = &spmi->dev;
+
+		/* register gpiochip and simulated interrupt handler. */
+		rc = gpiochip_add(&sys_gpiochip_dev->gc);
+		if (rc) {
+			dev_err(&spmi->dev,
+				"%s: failed to add qpnp-gpiochip-pon, rc=%d\n",
+				__func__, rc);
+			return -EINVAL;
+		}
+
+		rc = devm_irq_sim_init(&spmi->dev, &sys_gpiochip_dev->irqsim,
+				       sys_gpiochip_dev->gc.ngpio);
+		if (rc) {
+			dev_err(&spmi->dev,
+				"%s: failed to init simulated interrupt, rc=%d\n",
+				__func__, rc);
+			gpiochip_remove(&sys_gpiochip_dev->gc);
+			return -EINVAL;
+		}
+	}
+#endif // CONFIG_QPNP_POWER_ON_GPIO
+
 	return 0;
 }
 
@@ -2371,6 +2515,15 @@ static int qpnp_pon_remove(struct spmi_device *spmi)
 		list_del(&pon->list);
 		spin_unlock_irqrestore(&spon_list_slock, flags);
 	}
+
+#ifdef CONFIG_QPNP_POWER_ON_GPIO
+	if (!sys_gpiochip_dev) {
+		irq_sim_fini(&sys_gpiochip_dev->irqsim);
+		gpiochip_remove(&sys_gpiochip_dev->gc);
+		kfree(sys_gpiochip_dev);
+		sys_gpiochip_dev = NULL;
+	}
+#endif // CONFIG_QPNP_POWER_ON_GPIO
 	return 0;
 }
 
