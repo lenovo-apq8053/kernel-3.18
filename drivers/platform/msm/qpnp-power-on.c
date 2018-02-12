@@ -807,7 +807,7 @@ qpnp_get_cfg(struct qpnp_pon *pon, u32 pon_type)
 	return NULL;
 }
 
-static int
+static void
 qpnp_pon_get_resin_status(struct qpnp_pon *pon, bool *status)
 {
 	int rc;
@@ -820,12 +820,12 @@ qpnp_pon_get_resin_status(struct qpnp_pon *pon, bool *status)
 				QPNP_PON_RT_STS(pon), &pon_rt_sts, 1);
 	spin_unlock_irqrestore(&gpiochip_slock, flags);
 	if (rc) {
-		dev_err(&pon->spmi->dev, "Unable to read PON RT status\n");
-		return rc;
+		dev_err(&pon->spmi->dev,
+			"%s: Unable to read PON RT status, rc=%d\n", __func__, rc);
+		return;
 	}
 
 	*status = (pon_rt_sts & QPNP_PON_RESIN_N_SET) > 0;
-	return 0;
 }
 
 static int
@@ -2517,7 +2517,7 @@ static int qpnp_pon_remove(struct spmi_device *spmi)
 	}
 
 #ifdef CONFIG_QPNP_POWER_ON_GPIO
-	if (!sys_gpiochip_dev) {
+	if (sys_gpiochip_dev) {
 		irq_sim_fini(&sys_gpiochip_dev->irqsim);
 		gpiochip_remove(&sys_gpiochip_dev->gc);
 		kfree(sys_gpiochip_dev);
