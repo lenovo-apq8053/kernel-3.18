@@ -655,3 +655,7 @@
 		status = "ok";
 	};
 };
+
+&ipa_hw {
+	status = "disabled";
+};
