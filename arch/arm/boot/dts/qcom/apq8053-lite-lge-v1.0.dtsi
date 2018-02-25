@@ -67,3 +67,15 @@
 	qcom,cons-sync-write-delay-us = <1000>;
 	qcom,led-strings-list = [00 01 02 03];
 };
+
+&camera0 {
+	qcom,mount-angle = <180>;
+};
+
+&camera1 {
+	qcom,mount-angle = <180>;
+};
+
+&camera2 {
+	qcom,mount-angle = <180>;
+};
