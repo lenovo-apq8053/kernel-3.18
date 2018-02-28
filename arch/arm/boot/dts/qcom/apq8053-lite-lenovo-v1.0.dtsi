@@ -75,8 +75,39 @@
 	qcom,led-strings-list = [00 01 02 03];
 };
 
+&eeprom0 {
+	gpios = <&tlmm 26 0>,
+		<&tlmm 40 0>,
+		<&tlmm 118 0>,
+		<&tlmm 119 0>,
+		<&tlmm 39 0>;
+	qcom,gpio-vdig = <3>;
+	qcom,gpio-vana = <4>;
+	qcom,gpio-req-tbl-num = <0 1 2 3 4>;
+	qcom,gpio-req-tbl-flags = <1 0 0 0 0>;
+	qcom,gpio-req-tbl-label = "CAMIF_MCLK0",
+			"CAM_RESET0",
+			"CAM_VDIG",
+			"CAM_VANA",
+			"CAM_STANDBY0";
+};
+
 &camera0 {
 	qcom,mount-angle = <270>;
+	gpios = <&tlmm 26 0>,
+		<&tlmm 40 0>,
+		<&tlmm 39 0>,
+		<&tlmm 118 0>,
+		<&tlmm 119 0>;
+	qcom,gpio-vdig = <3>;
+	qcom,gpio-vana = <4>;
+	qcom,gpio-req-tbl-num = <0 1 2 3 4>;
+	qcom,gpio-req-tbl-flags = <1 0 0 0 0>;
+	qcom,gpio-req-tbl-label = "CAMIF_MCLK0",
+			"CAM_RESET0",
+			"CAM_STANDBY0",
+			"CAM_VDIG",
+			"CAM_VANA";
 };
 
 &camera1 {
