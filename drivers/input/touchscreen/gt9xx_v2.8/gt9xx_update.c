@@ -14,8 +14,6 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * General Public License for more details.
  *
- * Version: 2.8.0.1
- * Release Date: 2017/11/24
  */
 
 #include <linux/kthread.h>
@@ -44,9 +42,9 @@
 #define FW_GLINK_LENGTH			0x3000	/*  12k */
 #define FW_GWAKE_LENGTH		(4 * FW_SECTION_LENGTH) /*  32k */
 
+#define DELAY_FOR_SENDCFG		500
 #define PACK_SIZE			256
 #define MAX_FRAME_CHECK_TIME		5
-
 
 #define _bRW_MISCTL__SRAM_BANK		0x4048
 #define _bRW_MISCTL__MEM_CD_EN		0x4049
@@ -484,7 +482,7 @@ static int gup_update_config(struct i2c_client *client)
 		ret = gtp_i2c_write(client, file_config, file_cfg_len + 2);
 		if (ret > 0) {
 			dev_info(&client->dev, "Send config SUCCESS.");
-			msleep(500);
+			msleep(DELAY_FOR_SENDCFG);
 			break;
 		}
 		dev_err(&ts->client->dev, "Send config i2c error.");
@@ -666,14 +664,12 @@ static u8 gup_burn_proc(struct i2c_client *client, u8 *burn_buf,
 static u8 gup_load_section_file(u8 *buf, u32 offset, u16 length, u8 set_or_end)
 {
 	if (!update_msg.fw_data ||
-	    update_msg.fw_total_len < offset + length) {
-		dev_err(&i2c_connect_client->dev,
-			"cannot load section data. fw_len=%d read end=%d\n",
-			update_msg.fw_total_len,
-			FW_HEAD_LENGTH + offset + length);
+	    update_msg.fw_total_len < FW_HEAD_LENGTH + offset + length) {
+		pr_err("<<-GTP->> cannot load section data. fw_len=%d read end=%d\n",
+		update_msg.fw_total_len,
+		FW_HEAD_LENGTH + offset + length);
 		return FAIL;
 	}
-
 
 	if (SEEK_SET == set_or_end) {
 		memcpy(buf, &update_msg.fw_data[FW_HEAD_LENGTH + offset],

@@ -14,8 +14,6 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * General Public License for more details.
  *
- * Version: 2.8.0.1
- * Release Date: 2017/11/24
  */
 
 #include <linux/irq.h>
@@ -29,6 +27,7 @@
 #define GOODIX_I2C_VTG_MIN_UV	1800000
 #define GOODIX_I2C_VTG_MAX_UV	1800000
 
+#define DELAY_FOR_DISCHARGING		35
 #define GOODIX_COORDS_ARR_SIZE	4
 #define PROP_NAME_SIZE		24
 #define I2C_MAX_TRANSFER_SIZE   255
@@ -696,7 +695,6 @@ void gtp_int_sync(struct goodix_ts_data *ts, s32 ms)
 
 void gtp_rst_output(struct goodix_ts_data *ts, int level)
 {
-
 	if (level == 0) {
 		if (ts->pinctrl.pinctrl)
 			pinctrl_select_state(ts->pinctrl.pinctrl,
@@ -720,7 +718,6 @@ void gtp_rst_output(struct goodix_ts_data *ts, int level)
 
 void gtp_rst_input(struct goodix_ts_data *ts)
 {
-
 	if (ts->pinctrl.pinctrl)
 		pinctrl_select_state(ts->pinctrl.pinctrl,
 					 ts->pinctrl.rst_input);
@@ -729,7 +726,6 @@ void gtp_rst_input(struct goodix_ts_data *ts)
 	else
 		dev_err(&ts->client->dev,
 			"Failed set rst pin input\n");
-
 }
 
 /*******************************************************
@@ -1082,27 +1078,12 @@ static ssize_t gtp_config_read_proc(struct file *file, char __user *page,
 	return data_len;
 }
 
-static u8 ascii2hex(u8 a)
-{
-	s8 value = 0;
-
-	if (a >= '0' && a <= '9')
-		value = a - '0';
-	else if (a >= 'A' && a <= 'F')
-		value = a - 'A' + 0x0A;
-	else if (a >= 'a' && a <= 'f')
-		value = a - 'a' + 0x0A;
-	else
-		value = 0xff;
-
-	return value;
-}
-
 int gtp_ascii_to_array(const u8 *src_buf, int src_len, u8 *dst_buf)
 {
 	int i, ret;
 	int cfg_len = 0;
-	u8 high, low;
+	long val;
+	char temp_buf[5];
 
 	for (i = 0; i < src_len;) {
 		if (src_buf[i] == ' ' || src_buf[i] == '\r' ||
@@ -1111,18 +1092,14 @@ int gtp_ascii_to_array(const u8 *src_buf, int src_len, u8 *dst_buf)
 			continue;
 		}
 
-		if ((src_buf[i] == '0') && ((src_buf[i + 1] == 'x') ||
-					    (src_buf[i + 1] == 'X'))) {
-			high = ascii2hex(src_buf[i + 2]);
-			low = ascii2hex(src_buf[i + 3]);
-
-			if ((high == 0xFF) || (low == 0xFF)) {
-				ret = -1;
-				goto convert_failed;
-			}
-
+		temp_buf[0] = src_buf[i];
+		temp_buf[1] = src_buf[i + 1];
+		temp_buf[2] = src_buf[i + 2];
+		temp_buf[3] = src_buf[i + 3];
+		temp_buf[4] = '\0';
+		if (!kstrtol(temp_buf, 16, &val)) {
 			if (cfg_len < GTP_CONFIG_MAX_LENGTH) {
-				dst_buf[cfg_len++] = (high << 4) + low;
+				dst_buf[cfg_len++] = val & 0xFF;
 				i += 5;
 			} else {
 				ret = -2;
@@ -1532,7 +1509,7 @@ exit_pinctrl_init:
 	pinctrl->rst_out_high = NULL;
 	pinctrl->rst_out_low = NULL;
 	pinctrl->rst_input = NULL;
-	return 0;
+	return -EINVAL;
 }
 
 static void gtp_pinctrl_deinit(struct goodix_ts_data *ts)
@@ -1893,7 +1870,6 @@ static int gtp_power_on(struct goodix_ts_data *ts)
 				ret);
 			goto err_set_vtg_vdd_ana;
 		}
-
 		ret = regulator_enable(ts->vdd_ana);
 		if (ret) {
 			dev_err(&ts->client->dev,
@@ -1912,7 +1888,6 @@ static int gtp_power_on(struct goodix_ts_data *ts)
 				ret);
 			goto err_set_vtg_vcc_i2c;
 		}
-
 		ret = regulator_enable(ts->vcc_i2c);
 		if (ret) {
 			dev_err(&ts->client->dev,
@@ -2130,7 +2105,7 @@ static int gtp_probe(struct i2c_client *client, const struct i2c_device_id *id)
 
 	/*wait for discharging power, which from i2c pull-up flow backward*/
 	gtp_rst_output(ts, 0);
-	msleep(35);
+	msleep(DELAY_FOR_DISCHARGING);
 
 	ret = gtp_power_on(ts);
 	if (ret) {

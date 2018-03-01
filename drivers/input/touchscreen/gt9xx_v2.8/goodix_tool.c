@@ -14,8 +14,6 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * General Public License for more details.
  *
- * Version: 2.8.0.1
- * Release Date: 2017/11/24
  */
 
 #include "gt9xx.h"
@@ -313,7 +311,6 @@ ssize_t goodix_tool_write(struct file *filp, const char __user *buff,
 		(s32)cmd_head.times, (s32)cmd_head.retry,
 		(s32)cmd_head.delay);
 
-
 	if (1 == cmd_head.wr) {
 		if (cmd_head.data_len > DATA_LENGTH) {
 			dev_err(&gt_client->dev,
@@ -332,7 +329,6 @@ ssize_t goodix_tool_write(struct file *filp, const char __user *buff,
 
 		GTP_DEBUG_ARRAY(cmd_head.data, cmd_head.data_len +
 				cmd_head.addr_len);
-
 
 		if (1 == cmd_head.flag) {
 			if (FAIL == comfirm()) {
