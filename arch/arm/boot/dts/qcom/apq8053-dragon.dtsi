@@ -13,6 +13,7 @@
 
 #include "msm8953-pinctrl.dtsi"
 #include "apq8053-camera-sensor-dragon.dtsi"
+#include "apq8053-dragon-memory.dtsi"
 
 &soc {
 	vreg_5p0: vreg_5p0 {
