@@ -25,3 +25,7 @@
 &blsp2_uart0 {
 	status = "okay";
 };
+
+&pmi8950_charger {
+	qcom,charging-disabled;
+};
