@@ -514,6 +514,7 @@
 	qcom,chg-led-support;
 	qcom,external-typec;
 	qcom,typec-psy-name = "typec";
+	qcom,charging-disabled;
 	status = "ok";
 };
 
