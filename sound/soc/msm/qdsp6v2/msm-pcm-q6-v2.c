@@ -10,7 +10,6 @@
  * GNU General Public License for more details.
  */
 
-
 #include <linux/init.h>
 #include <linux/err.h>
 #include <linux/module.h>
@@ -69,9 +68,9 @@ static struct snd_pcm_hardware msm_pcm_hardware_capture = {
 	.formats =              (SNDRV_PCM_FMTBIT_S16_LE |
 				SNDRV_PCM_FMTBIT_S24_LE |
 				SNDRV_PCM_FMTBIT_S24_3LE),
-	.rates =                SNDRV_PCM_RATE_8000_48000,
+	.rates =                SNDRV_PCM_RATE_8000_192000,
 	.rate_min =             8000,
-	.rate_max =             48000,
+	.rate_max =             192000,
 	.channels_min =         1,
 	.channels_max =         4,
 	.buffer_bytes_max =     CAPTURE_MAX_NUM_PERIODS *
