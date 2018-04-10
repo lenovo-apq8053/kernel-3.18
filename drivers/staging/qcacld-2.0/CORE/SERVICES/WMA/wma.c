@@ -38712,9 +38712,7 @@ void wma_send_regdomain_info(u_int32_t reg_dmn, u_int16_t regdmn2G,
 		wmi_buf_free(buf);
 	}
 
-	if ((((reg_dmn & ~COUNTRY_ERD_FLAG) == CTRY_JAPAN) ||
-	     ((reg_dmn & ~COUNTRY_ERD_FLAG) == CTRY_KOREA_ROC)) &&
-	    (true == wma->tx_chain_mask_cck))
+	if (true == wma->tx_chain_mask_cck)
 		cck_mask_val = 1;
 
 	cck_mask_val |= (wma->self_gen_frm_pwr << 16);
