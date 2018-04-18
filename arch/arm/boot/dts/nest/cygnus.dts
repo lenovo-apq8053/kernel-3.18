@@ -1,0 +1,72 @@
+/*
+ * Copyright (c) 2016-2017, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+/dts-v1/;
+
+#include "cygnus-apq8053.dtsi"
+#include "cygnus.dtsi"
+#include "../qcom/apq8053-camera-sensor-mtp.dtsi"
+
+/ {
+	model = "Qualcomm Technologies, Inc. APQ8053 IOT MTP";
+	compatible = "qcom,apq8053-mtp", "qcom,apq8053", "qcom,mtp", "nest,cygnus";
+	qcom,board-id= <0x56 0>;
+};
+
+&pm8953_gpios {
+	/* GPIO 5 (ADV7533 DSI2HDMI) */
+	gpio@c400 {
+		status = "ok";
+		qcom,mode = <1>;
+		qcom,vin-sel = <0>;
+		qcom,src-sel = <0>;
+		qcom,master-en = <1>;
+		qcom,out-strength = <2>;
+	};
+
+};
+#include "cygnus-regulator.dtsi"
+
+&soc {
+	usb_detect {
+		compatible = "qcom,gpio-usbdetect";
+		interrupt-names = "vbus_det_irq";
+		interrupt-parent = <&tlmm>;
+		interrupts = <57 0>;
+		pinctrl-names = "button_active";
+		pinctrl-0 = <&button_active>;
+		qcom,gpio-mode-sel = <&tlmm 57 0>;
+		qcom,enable-button-mode;
+		/* TODO: Fix this hack to force the default to be device mode */
+		qcom,notify-host-mode;
+	};
+
+	hbtp {
+		status = "disabled";
+	};
+};
+
+&modem_mem {
+	reg = <0x0 0x86c00000 0x0 0x1e00000>;
+};
+
+&wcnss_fw_mem {
+	reg = <0x0 0x89b00000 0x0 0x700000>;
+};
+
+&gpio_key_suspend {
+	config {
+		/delete-property/ bias-pull-up;
+		bias-pull-down;
+	};
+};
