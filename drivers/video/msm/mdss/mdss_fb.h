@@ -238,9 +238,13 @@ struct msm_mdp_interface {
 
 #define IS_CALIB_MODE_BL(mfd) (((mfd)->calib_mode) & MDSS_CALIB_MODE_BL)
 #define MDSS_BRIGHT_TO_BL(out, v, bl_max, max_bright) do {\
-				if (v) {\
-				out = ((v - 1) * (bl_max - 1)) + (max_bright - 1);\
-				do_div(out, max_bright - 1);\
+				if (v == 0) {\
+					out = 0;\
+				} else if (v == 1) {\
+					out = 9;\
+				} else {\
+					out = ((v - 1) * (bl_max - 1)) + (max_bright - 1);\
+					do_div(out, max_bright - 1);\
 				}\
 				} while (0)
 
