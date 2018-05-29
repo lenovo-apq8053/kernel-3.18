@@ -241,7 +241,7 @@ struct msm_mdp_interface {
 				if (v == 0) {\
 					out = 0;\
 				} else if (v == 1) {\
-					out = 9;\
+					out = 10;\
 				} else {\
 					out = ((v - 1) * (bl_max - 1)) + (max_bright - 1);\
 					do_div(out, max_bright - 1);\
