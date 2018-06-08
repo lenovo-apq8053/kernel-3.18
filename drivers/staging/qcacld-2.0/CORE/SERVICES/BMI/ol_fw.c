@@ -987,7 +987,9 @@ static int ol_transfer_bin_file(struct ol_softc *scn, ATH_BIN_FILE file,
 
 	/* Wait until suspend and resume are completed before loading FW */
 	vos_lock_pm_sem();
+	vos_request_pm_qos_type(PM_QOS_CPU_DMA_LATENCY, DISABLE_KRAIT_IDLE_PS_VAL);
 	ret = __ol_transfer_bin_file(scn, file, address, compressed);
+	vos_remove_pm_qos();
 	vos_release_pm_sem();
 
 	return ret;
