@@ -1,4 +1,4 @@
-/* Copyright (c) 2013-2017, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2013-2018, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -886,9 +886,7 @@ static long msm_isp_ioctl_unlocked(struct v4l2_subdev *sd,
 		break;
 	case VIDIOC_MSM_ISP_CFG_STREAM:
 		mutex_lock(&vfe_dev->core_mutex);
-		mutex_lock(&vfe_dev->buf_mgr->lock);
 		rc = msm_isp_cfg_axi_stream(vfe_dev, arg);
-		mutex_unlock(&vfe_dev->buf_mgr->lock);
 		mutex_unlock(&vfe_dev->core_mutex);
 		break;
 	case VIDIOC_MSM_ISP_CFG_HW_STATE:
@@ -1002,9 +1000,7 @@ static long msm_isp_ioctl_unlocked(struct v4l2_subdev *sd,
 		break;
 	case VIDIOC_MSM_ISP_CFG_STATS_STREAM:
 		mutex_lock(&vfe_dev->core_mutex);
-		mutex_lock(&vfe_dev->buf_mgr->lock);
 		rc = msm_isp_cfg_stats_stream(vfe_dev, arg);
-		mutex_unlock(&vfe_dev->buf_mgr->lock);
 		mutex_unlock(&vfe_dev->core_mutex);
 		break;
 	case VIDIOC_MSM_ISP_UPDATE_STATS_STREAM:
