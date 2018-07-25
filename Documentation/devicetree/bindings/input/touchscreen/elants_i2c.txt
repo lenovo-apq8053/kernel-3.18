@@ -7,8 +7,8 @@ Elan Ektf3xx series touch controller
 		- interrupt-parent			: Parent of interrupt.
 		- interrupts				: Configuration of touch panel controller interrupt GPIO.
 		- elan,irq-gpio				: Interrupt gpio which is to provide interrupts to
-										host, same as "interrupts" node.It will also contain
-										active low or active high information
+								      host, same as "interrupts" node.It will also contain
+									  active low or active high information
 	
   Optional properties:
 
