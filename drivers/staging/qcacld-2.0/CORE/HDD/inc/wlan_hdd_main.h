@@ -1411,7 +1411,6 @@ struct hdd_adapter_s
     v_TIME_t startRocTs;
 
     /* State for synchronous OCB requests to WMI */
-    struct sir_ocb_set_config_response ocb_set_config_resp;
     struct sir_ocb_get_tsf_timer_response ocb_get_tsf_timer_resp;
     struct sir_dcc_get_stats_response *dcc_get_stats_resp;
     struct sir_dcc_update_ndl_response dcc_update_ndl_resp;
@@ -1437,7 +1436,6 @@ struct hdd_adapter_s
     struct hdd_netif_queue_history
             queue_oper_history[WLAN_HDD_MAX_HISTORY_ENTRY];
     struct hdd_netif_queue_stats queue_oper_stats[WLAN_REASON_TYPE_MAX];
-    struct power_stats_response *chip_power_stats;
 
     /* random address management for management action frames */
     spinlock_t random_mac_lock;
@@ -1910,11 +1908,6 @@ struct hdd_context_s
 
     /* debugfs entry */
     struct dentry *debugfs_phy;
-
-#ifdef WLAN_POWER_DEBUGFS
-    /* mutex lock to block concurrent access */
-    struct mutex power_stats_lock;
-#endif
 
     /* Use below lock to protect access to isSchedScanUpdatePending
      * since it will be accessed in two different contexts.
