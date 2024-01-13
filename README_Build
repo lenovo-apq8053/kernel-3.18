@@ -1,0 +1,23 @@
+Configuration files can be found in arch/arm/configs.
+
+  defconfig using in common:
+    msmcortex-perf_defconfig
+
+  diffconfigs for each product:
+    lenovo apq8053       => lenovo_defconfig
+
+Build kernel:
+    $ export ARCH=arm
+
+    $ export PATH=<path-to-cross-compiler-executables>:$PATH
+      NOTE: Please set the location of the ARM cross-compiler.
+
+    $ export CROSS_COMPILE=<toolchain-prefix>
+      NOTE: Please set the prefix of the ARM cross-compiler.
+            ex) arm-linux-androideabi-
+
+    $ make lenovo_defconfig O=./out
+
+    $ make O=./out
+
+    You can see arch/arm/boot/Image-dtb if you succeed in building.
